@@ -1,0 +1,71 @@
+<mujoco model="3D_Quad">
+  <compiler angle="radian"/>
+  <worldbody>
+    <body name="torso_front_link" pos="0 0 0.375">
+      <inertial pos="-0.0285714 0 0" quat="0.5 0.5 0.5 0.5" mass="1.4" diaginertia="0.0162471 0.0162471 0.00045"/>
+      <joint name="world_to_torso_front_joint" type="free" limited="false" actuatorfrclimited="false"/>
+      <geom size="0.05 0.05 0.005" pos="0.1 0 0" type="box" rgba="0.3 0.3 0.3 1"/>
+      <geom size="0.05 0.05 0.005" pos="-0.1 0 0" type="box" rgba="0.2 0.2 0.2 1"/>
+      
+      <body name="FLHAA_link" pos="0.2 0.15 0" quat="0.707105 0 0.707108 0">
+        <inertial pos="0 0 0" mass="3.2" diaginertia="0.0025 0.0025 0.0025"/>
+        <joint name="FLHAA" pos="0 0 0" axis="0 0 -1" range="-0.8727 0.8727" actuatorfrcrange="-60 60"/>
+        
+        <body name="FLHIP_link">
+          <inertial pos="0 0 -0.125" mass="0.3" diaginertia="0.0028 0.0028 0.0001567"/>
+          <joint name="FLHIP" pos="0 0 0" axis="0 -1 0" range="0 3.14159" actuatorfrcrange="-60 60"/>
+          <geom size="0.025 0.125" pos="0 0 -0.125" type="cylinder" rgba="0.1 0.1 0.1 1"/>
+          
+          <body name="FLKNEE_link" pos="0 0 -0.25">
+            <inertial pos="0 0 -0.125" mass="0.3" diaginertia="0.0026 0.0026 0.0001"/>
+            <joint name="FLKNEE" pos="0 0 0" axis="0 -1 0" range="0 3.14159" actuatorfrcrange="-60 60"/>
+            <geom size="0.02 0.125" pos="0 0 -0.125" type="cylinder" rgba="0.1 0.1 0.1 1"/>
+          </body>
+        </body>
+      </body>
+
+      <body name="FRHAA_link" pos="0.2 -0.15 0" quat="0.707105 0 0.707108 0">
+        <inertial pos="0 0 0" mass="3.2" diaginertia="0.0025 0.0025 0.0025"/>
+        <joint name="FRHAA" pos="0 0 0" axis="0 0 -1" range="-0.8727 0.8727" actuatorfrcrange="-60 60"/>
+        <body name="FRHIP_link">
+          <inertial pos="0 0 -0.125" mass="0.3" diaginertia="0.0028 0.0028 0.0001567"/>
+          <joint name="FRHIP" pos="0 0 0" axis="0 -1 0" range="0 3.14159" actuatorfrcrange="-60 60"/>
+          <geom size="0.025 0.125" pos="0 0 -0.125" type="cylinder" rgba="0.1 0.1 0.1 1"/>
+          <body name="FRKNEE_link" pos="0 0 -0.25">
+            <inertial pos="0 0 -0.125" mass="0.3" diaginertia="0.0026 0.0026 0.0001"/>
+            <joint name="FRKNEE" pos="0 0 0" axis="0 -1 0" range="0 3.14159" actuatorfrcrange="-60 60"/>
+            <geom size="0.02 0.125" pos="0 0 -0.125" type="cylinder" rgba="0.1 0.1 0.1 1"/>
+          </body>
+        </body>
+      </body>
+      <body name="RLHAA_link" pos="-0.2 0.15 0" quat="0.707105 0 0.707108 0">
+        <inertial pos="0 0 0" mass="3.2" diaginertia="0.0025 0.0025 0.0025"/>
+        <joint name="RLHAA" pos="0 0 0" axis="0 0 -1" range="-0.8727 0.8727" actuatorfrcrange="-60 60"/>
+        <body name="RLHIP_link">
+          <inertial pos="0 0 -0.125" mass="0.3" diaginertia="0.0028 0.0028 0.0001567"/>
+          <joint name="RLHIP" pos="0 0 0" axis="0 -1 0" range="0 3.14159" actuatorfrcrange="-60 60"/>
+          <geom size="0.025 0.125" pos="0 0 -0.125" type="cylinder" rgba="0.1 0.1 0.1 1"/>
+          <body name="RLKNEE_link" pos="0 0 -0.25">
+            <inertial pos="0 0 -0.125" mass="0.3" diaginertia="0.0026 0.0026 0.0001"/>
+            <joint name="RLKNEE" pos="0 0 0" axis="0 -1 0" range="0 3.14159" actuatorfrcrange="-60 60"/>
+            <geom size="0.02 0.125" pos="0 0 -0.125" type="cylinder" rgba="0.1 0.1 0.1 1"/>
+          </body>
+        </body>
+      </body>
+      <body name="RRHAA_link" pos="-0.2 -0.15 0" quat="0.707105 0 0.707108 0">
+        <inertial pos="0 0 0" mass="3.2" diaginertia="0.0025 0.0025 0.0025"/>
+        <joint name="RRHAA" pos="0 0 0" axis="0 0 -1" range="-0.8727 0.8727" actuatorfrcrange="-60 60"/>
+        <body name="RRHIP_link">
+          <inertial pos="0 0 -0.125" mass="0.3" diaginertia="0.0028 0.0028 0.0001567"/>
+          <joint name="RRHIP" pos="0 0 0" axis="0 -1 0" range="0 3.14159" actuatorfrcrange="-60 60"/>
+          <geom size="0.025 0.125" pos="0 0 -0.125" type="cylinder" rgba="0.1 0.1 0.1 1"/>
+          <body name="RRKNEE_link" pos="0 0 -0.25">
+            <inertial pos="0 0 -0.125" mass="0.3" diaginertia="0.0026 0.0026 0.0001"/>
+            <joint name="RRKNEE" pos="0 0 0" axis="0 -1 0" range="0 3.14159" actuatorfrcrange="-60 60"/>
+            <geom size="0.02 0.125" pos="0 0 -0.125" type="cylinder" rgba="0.1 0.1 0.1 1"/>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

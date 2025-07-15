@@ -1,0 +1,25 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/home/jinsong/Desktop/mujoco_cpp/mujoco-3.1.6/include",
+                "/home/jinsong/casadi",
+                "/home/jinsong/lib/Ipopt/src/Interfaces",
+                "/home/jinsong/lib/Ipopt/src/Common",
+                "/home/jinsong/lib/Ipopt/src/LinAlg",
+                "/opt/openrobots/include",
+                "/opt/openrobots/include/pinocchio",
+                "/usr/include/eigen-master",
+                "${workspaceFolder}/LegTrajectory"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-x64"
+        }
+    ],
+    "version": 4
+}

@@ -1,0 +1,323 @@
+<?xml version="1.0"?>
+<robot name="3D_Quad">
+
+    <material name="torso_front_mat">
+        <color rgba="0.3 0.3 0.3 1"/>
+    </material>
+    <material name="torso_back_mat">
+        <color rgba="0.2 0.2 0.2 1"/>
+    </material>
+    <material name="limb_mat">
+        <color rgba="0.1 0.1 0.1 1"/>
+    </material>
+    <material name="site_color">
+        <color rgba="1 0 0 1"/> </material>
+    <material name="foot_site_color">
+        <color rgba="0 1 0 1"/> </material>
+
+	<!-- 기준 -->
+    <link name="root"/>
+
+    <joint name="world_to_torso_front_joint" type="fixed">  <!--type="floating"-->
+        <parent link="root"/>
+        <child link="torso_front_link"/>
+        <origin xyz="0 0 0.375" rpy="0 0 0"/> </joint>
+
+    <link name="torso_front_link">
+        <inertial>
+            <mass value="0.5"/>
+            <origin xyz="0.1 0 0" rpy="0 0 0"/> <inertia ixx="0.000225" ixy="0" ixz="0" iyy="0.001695" iyz="0" izz="0.001695"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <box size="0.1 0.1 0.01"/>
+            </geometry>
+            <origin xyz="0.1 0 0" rpy="0 0 0"/> <material name="torso_front_mat"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.1 0.1 0.01"/>
+            </geometry>
+            <origin xyz="0.1 0 0" rpy="0 0 0"/>
+        </collision>
+    </link>
+
+    <joint name="imu_joint" type="fixed">
+        <parent link="torso_front_link"/>
+        <child link="imu_link"/>
+        <origin xyz="0 0 0" rpy="3.14159 0 0"/> </joint>
+    <link name="imu_link">
+        <visual>
+            <geometry>
+                <sphere radius="0.01"/>
+            </geometry>
+            <material name="site_color"/>
+        </visual>
+    </link>
+
+        
+        <!-- Fixed Joint for Jacobian -->
+        <link name="FLHAA_point"/>
+
+        <joint name="FLHAA_point_fixed" type="fixed">
+            <parent link="torso_front_link"/>
+            <child  link="FLHAA_point"/>
+            <origin xyz="0.2 0.15 0" rpy="3.14159 0 0"/>   <!-- HAA 원점과 동일 -->
+        </joint>
+
+    <joint name="FLHAA" type="revolute">
+        <parent link="torso_front_link"/>
+        <child link="FLHAA_link"/>
+        <origin xyz="0.2 0.15 0" rpy="0 1.5708 0"/> <axis xyz="0 0 -1"/>
+        <limit lower="-0.8727" upper="0.8727" effort="60" velocity="10"/> </joint>
+    <link name="FLHAA_link">
+        <inertial>
+            <mass value="3.2"/>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <inertia ixx="0.0025" ixy="0" ixz="0" iyy="0.0025" iyz="0" izz="0.0025"/>
+        </inertial>
+        </link>
+
+    <joint name="FLHIP" type="revolute">
+        <parent link="FLHAA_link"/>
+        <child link="FLHIP_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/> <axis xyz="0 -1 0"/>
+        <limit lower="0" upper="3.14159" effort="60" velocity="10"/> </joint>
+    <link name="FLHIP_link">
+        <inertial>
+            <mass value="0.3"/>
+            <origin xyz="0 0 -0.125" rpy="0 0 0"/> <inertia ixx="0.0028" ixy="0" ixz="0" iyy="0.0028" iyz="0" izz="0.0001567"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <cylinder length="0.25" radius="0.025"/> </geometry>
+            <origin xyz="0 0 -0.125" rpy="0 0 0"/> <material name="limb_mat"/>
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder length="0.25" radius="0.025"/>
+            </geometry>
+            <origin xyz="0 0 -0.125" rpy="0 0 0"/>
+        </collision>
+    </link>
+
+    <joint name="FLKNEE" type="revolute">
+        <parent link="FLHIP_link"/>
+        <child link="FLKNEE_link"/>
+        <origin xyz="0 0 -0.25" rpy="0 0 0"/> <axis xyz="0 -1 0"/>
+        <limit lower="0" upper="3.14159" effort="60" velocity="10"/> </joint>
+    <link name="FLKNEE_link">
+        <inertial>
+            <mass value="0.3"/>
+            <origin xyz="0 0 -0.125" rpy="0 0 0"/> <inertia ixx="0.0026" ixy="0" ixz="0" iyy="0.0026" iyz="0" izz="0.0001"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/> </geometry>
+            <origin xyz="0 0 -0.125" rpy="0 0 0"/> <material name="limb_mat"/>
+        </visual>
+        <collision>
+            <geometry>
+                <cylinder length="0.25" radius="0.02"/>
+            </geometry>
+            <origin xyz="0 0 -0.125" rpy="0 0 0"/>
+        </collision>
+    </link>
+
+    <joint name="FL_foot_joint" type="fixed">
+        <parent link="FLKNEE_link"/>
+        <child link="FL_foot"/>
+        <origin xyz="0 0 -0.25" rpy="0 0 0"/> </joint>
+    <link name="FL_foot">
+        <visual>
+            <geometry>
+                <sphere radius="0.01"/>
+            </geometry>
+            <material name="foot_site_color"/>
+        </visual>
+    </link>
+
+        <!-- Fixed Joint for Jacobian -->
+        <link name="FRHAA_point"/>
+
+        <joint name="FRHAA_point_fixed" type="fixed">
+            <parent link="torso_front_link"/>
+            <child  link="FRHAA_point"/>
+            <origin xyz="0.2 -0.15 0" rpy="3.14159 0 0"/>   <!-- HAA 원점과 동일 -->
+        </joint>
+
+    <joint name="FRHAA" type="revolute">
+        <parent link="torso_front_link"/>
+        <child link="FRHAA_link"/>
+        <origin xyz="0.2 -0.15 0" rpy="0 1.5708 0"/>
+        <axis xyz="0 0 -1"/>
+        <limit lower="-0.8727" upper="0.8727" effort="60" velocity="10"/>
+        </joint>
+    <link name="FRHAA_link">
+        <inertial> <mass value="3.2"/> <origin xyz="0 0 0"/> <inertia ixx="0.0025" ixy="0" ixz="0" iyy="0.0025" iyz="0" izz="0.0025"/> </inertial>
+    </link>
+
+    <joint name="FRHIP" type="revolute">
+        <parent link="FRHAA_link"/>
+        <child link="FRHIP_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <axis xyz="0 -1 0"/>
+        <limit lower="0" upper="3.14159" effort="60" velocity="10"/>
+        </joint>
+    <link name="FRHIP_link">
+        <inertial> <mass value="0.3"/> <origin xyz="0 0 -0.125"/> <inertia ixx="0.0028" ixy="0" ixz="0" iyy="0.0028" iyz="0" izz="0.0001567"/> </inertial>
+        <visual> <geometry> <cylinder length="0.25" radius="0.025"/> </geometry> <origin xyz="0 0 -0.125"/> <material name="limb_mat"/> </visual>
+        <collision> <geometry> <cylinder length="0.25" radius="0.025"/> </geometry> <origin xyz="0 0 -0.125"/> </collision>
+    </link>
+
+    <joint name="FRKNEE" type="revolute">
+        <parent link="FRHIP_link"/>
+        <child link="FRKNEE_link"/>
+        <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+        <axis xyz="0 -1 0"/>
+        <limit lower="0" upper="3.14159" effort="60" velocity="10"/>
+        </joint>
+    <link name="FRKNEE_link">
+        <inertial> <mass value="0.3"/> <origin xyz="0 0 -0.125"/> <inertia ixx="0.0026" ixy="0" ixz="0" iyy="0.0026" iyz="0" izz="0.0001"/> </inertial>
+        <visual> <geometry> <cylinder length="0.25" radius="0.02"/> </geometry> <origin xyz="0 0 -0.125"/> <material name="limb_mat"/> </visual>
+        <collision> <geometry> <cylinder length="0.25" radius="0.02"/> </geometry> <origin xyz="0 0 -0.125"/> </collision>
+    </link>
+    <joint name="FR_foot_joint" type="fixed">
+        <parent link="FRKNEE_link"/>
+        <child link="FR_foot"/>
+        <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    </joint>
+    <link name="FR_foot"> <visual> <geometry> <sphere radius="0.01"/> </geometry> <material name="foot_site_color"/> </visual> </link>
+
+
+    <joint name="torso_front_to_torso_back_joint" type="fixed">
+        <parent link="torso_front_link"/>
+        <child link="torso_back_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/> </joint>
+    <link name="torso_back_link">
+        <inertial>
+            <mass value="0.9"/>
+            <origin xyz="-0.1 0 0" rpy="0 0 0"/>
+            <inertia ixx="0.000225" ixy="0" ixz="0" iyy="0.001695" iyz="0" izz="0.001695"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <box size="0.1 0.1 0.01"/>
+            </geometry>
+            <origin xyz="-0.1 0 0" rpy="0 0 0"/>
+            <material name="torso_back_mat"/>
+        </visual>
+        <collision>
+            <geometry>
+                <box size="0.1 0.1 0.01"/>
+            </geometry>
+            <origin xyz="-0.1 0 0" rpy="0 0 0"/>
+        </collision>
+    </link>
+
+        <!-- Fixed Joint for Jacobian -->
+        <link name="RLHAA_point"/>
+
+        <joint name="RLHAA_point_fixed" type="fixed">
+            <parent link="torso_back_link"/>
+            <child  link="RLHAA_point"/>
+            <origin xyz="-0.2 0.15 0" rpy="3.14159 0 0"/>   <!-- HAA 원점과 동일 -->
+        </joint>
+
+    <joint name="RLHAA" type="revolute">
+        <parent link="torso_back_link"/>
+        <child link="RLHAA_link"/>
+        <origin xyz="-0.2 0.15 0" rpy="0 1.5708 0"/>
+        <axis xyz="0 0 -1"/>
+        <limit lower="-0.8727" upper="0.8727" effort="60" velocity="10"/>
+        </joint>
+    <link name="RLHAA_link">
+        <inertial> <mass value="3.2"/> <origin xyz="0 0 0"/> <inertia ixx="0.0025" ixy="0" ixz="0" iyy="0.0025" iyz="0" izz="0.0025"/> </inertial>
+    </link>
+
+    <joint name="RLHIP" type="revolute">
+        <parent link="RLHAA_link"/>
+        <child link="RLHIP_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <axis xyz="0 -1 0"/>
+        <limit lower="0" upper="3.14159" effort="60" velocity="10"/>
+        </joint>
+    <link name="RLHIP_link">
+        <inertial> <mass value="0.3"/> <origin xyz="0 0 -0.125"/> <inertia ixx="0.0028" ixy="0" ixz="0" iyy="0.0028" iyz="0" izz="0.0001567"/> </inertial>
+        <visual> <geometry> <cylinder length="0.25" radius="0.025"/> </geometry> <origin xyz="0 0 -0.125"/> <material name="limb_mat"/> </visual>
+        <collision> <geometry> <cylinder length="0.25" radius="0.025"/> </geometry> <origin xyz="0 0 -0.125"/> </collision>
+    </link>
+
+    <joint name="RLKNEE" type="revolute">
+        <parent link="RLHIP_link"/>
+        <child link="RLKNEE_link"/>
+        <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+        <axis xyz="0 -1 0"/>
+        <limit lower="0" upper="3.14159" effort="60" velocity="10"/>
+        </joint>
+    <link name="RLKNEE_link">
+        <inertial> <mass value="0.3"/> <origin xyz="0 0 -0.125"/> <inertia ixx="0.0026" ixy="0" ixz="0" iyy="0.0026" iyz="0" izz="0.0001"/> </inertial>
+        <visual> <geometry> <cylinder length="0.25" radius="0.02"/> </geometry> <origin xyz="0 0 -0.125"/> <material name="limb_mat"/> </visual>
+        <collision> <geometry> <cylinder length="0.25" radius="0.02"/> </geometry> <origin xyz="0 0 -0.125"/> </collision>
+    </link>
+    <joint name="RL_foot_joint" type="fixed">
+        <parent link="RLKNEE_link"/>
+        <child link="RL_foot"/>
+        <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    </joint>
+    <link name="RL_foot"> <visual> <geometry> <sphere radius="0.01"/> </geometry> <material name="foot_site_color"/> </visual> </link>
+
+
+        <!-- Fixed Joint for Jacobian -->
+        <link name="RRHAA_point"/>
+
+        <joint name="RRHAA_point_fixed" type="fixed">
+            <parent link="torso_back_link"/>
+            <child  link="RRHAA_point"/>
+            <origin xyz="-0.2 -0.15 0" rpy="3.14159 0 0"/>   <!-- HAA 원점과 동일 -->
+        </joint>
+
+    <joint name="RRHAA" type="revolute">
+        <parent link="torso_back_link"/>
+        <child link="RRHAA_link"/>
+        <origin xyz="-0.2 -0.15 0" rpy="0 1.5708 0"/>
+        <axis xyz="0 0 -1"/>
+        <limit lower="-0.8727" upper="0.8727" effort="60" velocity="10"/>
+        </joint>
+    <link name="RRHAA_link">
+        <inertial> <mass value="3.2"/> <origin xyz="0 0 0"/> <inertia ixx="0.0025" ixy="0" ixz="0" iyy="0.0025" iyz="0" izz="0.0025"/> </inertial>
+    </link>
+
+    <joint name="RRHIP" type="revolute">
+        <parent link="RRHAA_link"/>
+        <child link="RRHIP_link"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <axis xyz="0 -1 0"/>
+        <limit lower="0" upper="3.14159" effort="60" velocity="10"/>
+        </joint>
+    <link name="RRHIP_link">
+        <inertial> <mass value="0.3"/> <origin xyz="0 0 -0.125"/> <inertia ixx="0.0028" ixy="0" ixz="0" iyy="0.0028" iyz="0" izz="0.0001567"/> </inertial>
+        <visual> <geometry> <cylinder length="0.25" radius="0.025"/> </geometry> <origin xyz="0 0 -0.125"/> <material name="limb_mat"/> </visual>
+        <collision> <geometry> <cylinder length="0.25" radius="0.025"/> </geometry> <origin xyz="0 0 -0.125"/> </collision>
+    </link>
+
+    <joint name="RRKNEE" type="revolute">
+        <parent link="RRHIP_link"/>
+        <child link="RRKNEE_link"/>
+        <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+        <axis xyz="0 -1 0"/>
+        <limit lower="0" upper="3.14159" effort="60" velocity="10"/>
+        </joint>
+    <link name="RRKNEE_link">
+        <inertial> <mass value="0.3"/> <origin xyz="0 0 -0.125"/> <inertia ixx="0.0026" ixy="0" ixz="0" iyy="0.0026" iyz="0" izz="0.0001"/> </inertial>
+        <visual> <geometry> <cylinder length="0.25" radius="0.02"/> </geometry> <origin xyz="0 0 -0.125"/> <material name="limb_mat"/> </visual>
+        <collision> <geometry> <cylinder length="0.25" radius="0.02"/> </geometry> <origin xyz="0 0 -0.125"/> </collision>
+    </link>
+    <joint name="RR_foot_joint" type="fixed">
+        <parent link="RRKNEE_link"/>
+        <child link="RR_foot"/>
+        <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+    </joint>
+    <link name="RR_foot"> <visual> <geometry> <sphere radius="0.01"/> </geometry> <material name="foot_site_color"/> </visual> </link>
+
+    </robot>
