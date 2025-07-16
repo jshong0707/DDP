@@ -1,108 +1,134 @@
 #include "robot_parameter.hpp"
 
-robot_parameter::robot_parameter()
+// Pinocchio 헤더는 CPP 파일에서만 포함
+#include <pinocchio/fwd.hpp>
+#include <pinocchio/parsers/urdf.hpp>
+#include <pinocchio/algorithm/rnea.hpp>
+#include <pinocchio/algorithm/crba.hpp>
+#include <pinocchio/algorithm/jacobian.hpp>
+#include <pinocchio/algorithm/frames.hpp>
+#include <pinocchio/math/rpy.hpp>
+
+#include <iostream>
+
+// Impl 정의 및 구현
+struct robot_parameter::Impl
 {
-    const std::string urdf_filename = "../urdf/3D_Quad.urdf";
-    pinocchio::urdf::buildModel(urdf_filename, pinocchio::JointModelFreeFlyer(), model_);
+  // Pinocchio 모델 & 데이터
+  pinocchio::Model model_;
+  pinocchio::Data  data_;
+
+  // URDF 에 정의된 프레임 이름
+  const std::string imu_frame = "imu_joint";
+
+  // 각 다리별 HAA 지점부터 foot 지점까지의 링크 이름
+  const std::array<std::array<std::string,4>,4> legs = {{
+    { "FLHAA_point", "FLHIP",  "FLKNEE",  "FL_foot" },
+    { "FRHAA_point", "FRHIP",  "FRKNEE",  "FR_foot" },
+    { "RLHAA_point", "RLHIP",  "RLKNEE",  "RL_foot" },
+    { "RRHAA_point", "RRHIP",  "RRKNEE",  "RR_foot" }
+  }};
+
+  // 계산된 결과 저장
+  std::array<Eigen::Vector3d,4> leg_pos;    // HAA→foot 위치
+  std::array<Eigen::Matrix3d,4> J_B;        // Body 프레임 자코비안
+  Eigen::Matrix3d              R_BW;       // Body→World 회전
+  Eigen::Vector3d              rpy;        // yaw‑pitch‑roll
+
+  Impl()
+  {
+    constexpr char URDF[] = "../urdf/3D_Quad.urdf";
+    
+    pinocchio::urdf::buildModel(
+      URDF,
+      pinocchio::JointModelFreeFlyer(),
+      model_);
     data_ = pinocchio::Data(model_);
 
-    cout << "Pinocchio model loaded successfully!" << endl;
-    cout << "Number of joints: " << model_.njoints << endl;
-    cout << model_.nq << endl;
+    std::cout << "Pinocchio model loaded successfully!\n"
+              << ", nq = "    << model_.nq    << "\n";
+  }
 
-    legs[0] = {"FLHAA_point",   "FLHIP",   "FLKNEE",   "FL_foot"};
-    legs[1] = {"FRHAA_point",   "FRHIP",   "FRKNEE",   "FR_foot"};
-    legs[2] = {"RLHAA_point",   "RLHIP",   "RLKNEE",   "RL_foot"},
-    legs[3] = {"RRHAA_point",   "RRHIP",   "RRKNEE",   "RR_foot"};
-    
-}
+  // q, qd, qdd 받아서 순·역·자코비안·RPY 계산
+  void robot_param(const Eigen::VectorXd &q,
+                   const Eigen::VectorXd &qd,
+                   const Eigen::VectorXd &qdd)
+  {
+    using namespace pinocchio;
 
-
-robot_parameter::~robot_parameter()
-{
-}
-
-
-void robot_parameter::robot_param(VectorXd q, VectorXd qd, VectorXd qdd)
-{
-    string A = "FL_foot";
-
+    // 순동역학/자코비안/프레임 업데이트
     forwardKinematics(model_, data_, q, qd);
     computeJointJacobians(model_, data_, q);
     updateFramePlacements(model_, data_);
 
+    // IMU 프레임 정보
+    const auto &oMf_imu = data_.oMf[model_.getFrameId(imu_frame)];
+    R_BW = oMf_imu.rotation();
 
-
-    pinocchio::SE3 T_imu = data_.oMf[model_.getFrameId(Body)]; 
-    
-    
-    Eigen::MatrixXd J = MatrixXd::Zero(6,18);
-
-
-    int i = 0;
-    for (const auto& foot_name : foot) 
+    // 각 다리별 HAA→foot 위치와 Body 프레임 자코비안 계산
+    for(int i = 0; i < 4; ++i)
     {
-        pinocchio::SE3 T_foot = data_.oMf[model_.getFrameId(foot_name)];
-        pinocchio::SE3 imutofoot;
-        imutofoot = T_imu.inverse() * T_foot;  // IMU to foot at IMU frame
-        r_W[i] = imutofoot.translation();
-        // cout << "Vector from IMU to " << foot_name << ": " << r_W[i].transpose() << endl;
-        
-        i++;
+      // HAA→foot 변환
+      const auto &oMf_HAA  = data_.oMf[model_.getFrameId(legs[i][0])];
+      const auto &oMf_foot = data_.oMf[model_.getFrameId(legs[i][3])];
+      auto T_HAA2foot = oMf_HAA.inverse() * oMf_foot;
+      leg_pos[i] = T_HAA2foot.translation();
+
+      // World‑aligned 자코비안 → Body 프레임
+      Eigen::MatrixXd J6(6, model_.nv);
+      getFrameJacobian(
+        model_, data_,
+        model_.getFrameId(legs[i][3]),
+        LOCAL_WORLD_ALIGNED,
+        J6
+      );
+      // 위치 블록(0..2), 각 다리 조인트 블록(6+3*i ..)
+      J_B[i] = R_BW.transpose()
+             * J6.block(0, 6 + 3*i, 3, 3);
     }
 
-
-
-
-    Eigen::MatrixXd J_FL(6, model_.nv);
-    Eigen::MatrixXd J_FR(6, model_.nv);
-    Eigen::MatrixXd J_RL(6, model_.nv);
-    Eigen::MatrixXd J_RR(6, model_.nv);
-
-    // Jacobian, World frame
-    getFrameJacobian(model_, data_, model_.getFrameId(legs[0][3]), LOCAL_WORLD_ALIGNED, J_FL);
-    getFrameJacobian(model_, data_, model_.getFrameId(legs[1][3]), LOCAL_WORLD_ALIGNED, J_FR);
-    getFrameJacobian(model_, data_, model_.getFrameId(legs[2][3]), LOCAL_WORLD_ALIGNED, J_RL);
-    getFrameJacobian(model_, data_, model_.getFrameId(legs[3][3]), LOCAL_WORLD_ALIGNED, J_RR);
-
-    R_BW = data_.oMf[model_.getFrameId(Body)].rotation(); // Body to World
-
-
-    J_B[0] = R_BW.transpose() * J_FL.block(0,6,3,3);
-    J_B[1] = R_BW.transpose() * J_FR.block(0,9,3,3);
-    J_B[2] = R_BW.transpose() * J_RL.block(0,12,3,3);
-    J_B[3] = R_BW.transpose() * J_RR.block(0,15,3,3);
-    
-    // pinocchio::Motion::Vector3 rpy = pinocchio::rpy::matrixToRpy(R_BW);
-    Matrix3d R_WB = R_BW.transpose();
-    
-    Vector3d ypr = pinocchio::rpy::matrixToRpy(R_BW);
-    Eigen::Quaterniond q_WB(R_BW.transpose());
-
-    rpy = {ypr[2], -ypr[1], -ypr[0]};
-    // rpy = ypr;
-    for(int i = 0; i < 4; i ++)
+    // RPY(Z‑Y‑X) → yaw,‑pitch,‑roll
     {
-        T_W_HAA[i] = data_.oMf[model_.getFrameId(legs[i][0])];
-        T_W_foot[i] = data_.oMf[model_.getFrameId(legs[i][3])];
+      auto ypr = rpy::matrixToRpy(R_BW);
+      // Pinocchio 기본 [roll,pitch,yaw]를 [yaw,‑pitch,‑roll]로 조정
+      rpy = { ypr[2], -ypr[1], -ypr[0] };
+    }
+  }
 
-        T_B[i] = T_W_HAA[i].inverse() * T_W_foot[i]; // HAA to foot at HAA frame
-        
-        leg_pos[i] = T_B[i].translation();
-    }    
+  // 접근자들
+  Eigen::Vector3d get_leg_pos(int i) const { return leg_pos[i]; }
+  Eigen::Matrix3d get_Jacb   (int i) const { return J_B[i];   }
+  Eigen::Vector3d get_rpy    ()    const { return rpy;      }
+  Eigen::Matrix3d get_R      ()    const { return R_BW;     }
+};
 
+// robot_parameter: public → Impl 위임
 
-    // cout << "Dynamics \n" << pinocchio::rnea(model_, data_, q, qd, qdd) << endl;  // Dynamics joint torque들
-    // cout << pinocchio::computeGeneralizedGravity(model_, data_, q) << endl; // Gravity term만 계산
-    // cout << pinocchio::computeCoriolisMatrix(model_, data_, q, qd) << endl;
-    // cout <<"C+G\n"<< pinocchio::nonLinearEffects(model_, data_, q, qd) << endl;  // C + G Joint torque
-    // pinocchio::crba(model_, data_, q);  // pinocchio::crba 함수를 호출합니다. 이 함수는 model과 q를 사용하여 관성 행렬을 계산하고, 그 결과를 data 객체의 M 멤버에 저장합니다.
-    
-    // for(int i = 0; i < 4; i++)
-    //     Leg_Inertia[i] = data_.M.block(6 + 3*i,6 + 3*i,3,3);
+robot_parameter::robot_parameter()
+ : pimpl_(std::make_unique<Impl>()) 
+{}
 
-    
-        // cout << "Inertia\n" << pinocchio::crba(model_, data_, q) << endl;
-        
-}       
+robot_parameter::~robot_parameter() = default;
 
+void robot_parameter::robot_param(const Eigen::VectorXd &q,
+                                 const Eigen::VectorXd &qd,
+                                 const Eigen::VectorXd &qdd)
+{
+  pimpl_->robot_param(q, qd, qdd);
+}
+
+Eigen::Vector3d robot_parameter::get_leg_pos(int i) const {
+  return pimpl_->get_leg_pos(i);
+}
+
+Eigen::Matrix3d robot_parameter::get_Jacb(int i) const {
+  return pimpl_->get_Jacb(i);
+}
+
+Eigen::Vector3d robot_parameter::get_rpy() const {
+  return pimpl_->get_rpy();
+}
+
+Eigen::Matrix3d robot_parameter::get_R() const {
+  return pimpl_->get_R();
+}
