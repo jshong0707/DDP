@@ -33,12 +33,20 @@
 #include <thread>
 
 #include <dataLogging.hpp>
-#include "globals.hpp"
+#include "Body.hpp"
+#include "Trajectory.hpp"
+#include "FSM.hpp"
+#include "MPC.hpp"
+#include "Controller.hpp"
+#include "Actuator.hpp"
+#include "filter.hpp"
 #include "Integrate.hpp"
+#include "robot_parameter.hpp"
+#include "globals.hpp"
 #include "F_Kinematics.hpp"
 #include "B_Kinematics.hpp"
-#include "Controller.hpp"
-#include "robot_parameter.hpp"
+
+
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
 
@@ -177,6 +185,8 @@ if(t < 0.0001)
       // K_FL.Cal_Kinematics();
       // cout << "Kinematics\n" << K_FL.get_Jacb() << endl;
       
+      
+
       d->ctrl[0] = I.get_FL_J_input()[0]; // FLHAA
       d->ctrl[1] = I.get_FL_J_input()[1]; // + I.get_FL_J_input()[2]; // FLHIP
       d->ctrl[2] = I.get_FL_J_input()[2]; // FLKNEE
