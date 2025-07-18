@@ -28,6 +28,7 @@ public:
   Eigen::Matrix3d  get_Body_I()   const;
   double           get_Body_M()   const;
   Eigen::Vector3d  get_r_W(int i) const;
+  Eigen::Vector3d get_foot_pos_W(int i) const;
 
 private:
   struct Impl;

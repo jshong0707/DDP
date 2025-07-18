@@ -30,7 +30,7 @@ find_library(MUJOCO_LIB
 file(GLOB_RECURSE SOURCES "simulate.cpp" "glfw_adapter.cpp" "glfw_dispatch.cpp" "lodepng.cpp" "platform_ui_adapter.cpp" 
 "main.cc" "globals.cc" "filter.cc" "Controller.cc" "Integrate.cc" "Trajectory.cc" "BezierCurve.cc"
  "Actuator.cc" "F_Kinematics.cc" "B_Kinematics.cc" "Body.cc" "MPC.cc" "MPC_util.cc"
- "dataLogging.cc" "FSM.cc" "robot_parameter.cc")
+ "dataLogging.cc" "FSM.cc" "robot_parameter.cc" "KF.cc")
 
 
 add_executable (main ${SOURCES})

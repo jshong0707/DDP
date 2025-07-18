@@ -5,6 +5,7 @@
 #include "MPC.hpp"
 #include "Controller.hpp"
 #include "FSM.hpp"
+#include "KF.hpp"
 #include <array>
 
 struct Integrate::Impl {
@@ -14,6 +15,7 @@ struct Integrate::Impl {
   MPC             &M;
   Controller      &C;
   FSM             &FSM_;
+  KalmanFilter    &KF;
 
   double t = 0;
   double optimization_t = 0;
@@ -38,13 +40,15 @@ struct Integrate::Impl {
        Body            &b,
        MPC             &m,
        Controller      &c,
-       FSM             &f)
+       FSM             &f,
+       KalmanFilter    &kf)
     : pino(p),
       Traj(t_),
       B(b),
       M(m),
       C(c),
       FSM_(f),
+      KF(kf),
       q(Eigen::VectorXd::Zero(19)),
       qd(Eigen::VectorXd::Zero(18)),
       qdd(Eigen::VectorXd::Zero(18)),
@@ -70,8 +74,9 @@ Integrate::Integrate(robot_parameter &pino,
                      Body            &B,
                      MPC             &M,
                      Controller      &C,
-                     FSM             &FSM_)
-  : pimpl_(std::make_unique<Impl>(pino, Traj, B, M, C, FSM_))
+                     FSM             &FSM_,
+                     KalmanFilter    &KF)
+  : pimpl_(std::make_unique<Impl>(pino, Traj, B, M, C, FSM_, KF))
 {}
 
 Integrate::~Integrate() = default;
@@ -86,6 +91,45 @@ void Integrate::sensor_measure(const mjModel* m, mjData* d) {
   i.pino.robot_param(i.q, i.qd, i.qdd);
   i.B.sensor_measure(m, d);
   i.M.foot_vector(m, d);
+
+  // Q: 상태 예측 오차를 모델링 (가속 노이즈 등)
+  Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(18, 18);
+  Q.block<3,3>(0, 0) << 1e-2, 0, 0, // body x pos
+                        0, 1e-2, 0, // body y pos
+                        0, 0, 1e-2; // body z pos
+
+  Q.block<3,3>(3, 3) << 1e-2, 0, 0, // body x vel
+                        0, 1e-2, 0, // body y vel
+                        0, 0, 1e-2; // body z vel
+
+  Q.block<3,3>(6, 6) << 1e-2, 0, 0, // foot x
+                        0, 1e-2, 0, // foot y
+                        0, 0, 1e-2; // foot z
+  Q.block<3,3>(9, 9) = Q.block<3,3>(6, 6);
+  Q.block<3,3>(12, 12) = Q.block<3,3>(6, 6);
+
+  // R: 측정 오차를 모델링 (상대 발 위치/속도 센서 노이즈)
+  Eigen::MatrixXd R = Eigen::MatrixXd::Zero(24, 24);
+  R.block<3,3>(0, 0) << 1e-2, 0, 0, // body to foot x pos
+                        0, 1e-2, 0, // body to foot y pos
+                        0, 0, 1e-2; // body to foot z pos
+  R.block<3,3>(3, 3) = R.block<3,3>(0, 0);
+  R.block<3,3>(6, 6) = R.block<3,3>(0, 0);
+  R.block<3,3>(9, 9) = R.block<3,3>(0, 0);
+
+  R.block<3,3>(12, 12) << 1e-12, 0, 0, // body to foot x pos
+                          0, 1e-12, 0, // body to foot y pos
+                          0, 0, 1e-12; // body to foot z pos
+  R.block<3,3>(15, 15) = R.block<3,3>(12, 12);
+  R.block<3,3>(18, 18) = R.block<3,3>(12, 12);
+  R.block<3,3>(21, 21) = R.block<3,3>(12, 12);
+
+  i.KF.setProcessNoise(Q);
+  i.KF.setMeasurementNoise(R);
+
+  i.KF.prediction_step();
+  i.KF.sensor_measure(m, d);
+  i.KF.update_step();
 }
 
 void Integrate::get_error(double /*unused*/) {
@@ -151,5 +195,7 @@ Eigen::Vector3d Integrate::get_RR_J_input() { return pimpl_->B_Joint_input[1]; }
 Eigen::VectorXd Integrate::get_leg_pos_ref() { return pimpl_->leg_pos_ref; }
 Eigen::VectorXd Integrate::get_leg_pos()     { return pimpl_->leg_pos; }
 Eigen::VectorXd Integrate::get_x0()          { return pimpl_->B.get_x0(); }
+Eigen::VectorXd Integrate::get_x0_est()      { return pimpl_->KF.get_state(); }
+Eigen::VectorXd Integrate::get_W_foot_pos(int i)  { return pimpl_->B.get_foot_pos_W(i); }
 Eigen::VectorXd Integrate::get_x_ref()       { return pimpl_->B.get_x_ref(pimpl_->t); }
 Eigen::VectorXd Integrate::get_opt_GRF(int leg) { return pimpl_->opt_GRF[leg]; }

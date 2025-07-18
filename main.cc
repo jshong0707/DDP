@@ -45,7 +45,7 @@
 #include "globals.hpp"
 #include "F_Kinematics.hpp"
 #include "B_Kinematics.hpp"
-
+#include "KF.hpp"
 
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
@@ -120,7 +120,9 @@ MPC M(B, FSM_);
 
 Controller C;
 
-Integrate I(pino, Traj, B, M, C, FSM_);
+KalmanFilter KF;
+
+Integrate I(pino, Traj, B, M, C, FSM_, KF);
 
 dataLogging Logging;
 

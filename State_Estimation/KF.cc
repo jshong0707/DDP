@@ -53,6 +53,8 @@ struct KalmanFilter::Impl {
     std::array<Eigen::Vector3d, 4> foot_vel_rel_;
 
     Impl() {
+        x[2] = 0.375;
+
         // Load URDF model
         const std::string urdf_path = "../urdf/3D_Quad.urdf";
         pinocchio::urdf::buildModel(urdf_path, pinocchio::JointModelFreeFlyer(), model);
@@ -65,6 +67,21 @@ struct KalmanFilter::Impl {
         // 0. 회전 행렬 업데이트 (IMU 각속도 사용)
         omega_hat = F.skew(omega);
         R_WB = R_WB * (omega_hat * Ts).exp();  // R_k = R_{k-1} * exp(Ts * [omega]_x)
+        
+        double roll, pitch, yaw;
+
+        // Check for gimbal lock (pitch = ±90 deg)
+        if (std::abs(R_WB(2,0)) < 1.0 - 1e-6) {
+            pitch = std::asin(-R_WB(2,0));
+            roll  = std::atan2(R_WB(2,1), R_WB(2,2));
+            yaw   = std::atan2(R_WB(1,0), R_WB(0,0));
+        } else {
+            // Gimbal lock: pitch = ±90 deg
+            pitch = (R_WB(2,0) <= -1.0) ? M_PI/2 : -M_PI/2;
+            roll  = 0.0;
+            yaw   = std::atan2(-R_WB(0,1), R_WB(1,1));
+        }
+        //cout << "roll: " << roll << "pitch: " << pitch << "yaw: " << yaw << endl;
 
         // 1. IMU: accelerometer (f_tilde) and gyroscope (omega)
         f_tilde << d->sensordata[0], d->sensordata[1], d->sensordata[2];
@@ -122,7 +139,7 @@ struct KalmanFilter::Impl {
 
             // Kalman Filter용 z 벡터 구성
             z.segment<3>(i * 3) = foot_rel_pos;
-            z.segment<3>(i * 3 + 6) = foot_rel_vel;
+            z.segment<3>(i * 3 + 12) = foot_rel_vel;
         }
     }
 
@@ -149,11 +166,10 @@ struct KalmanFilter::Impl {
         // Measurement matrix
         for (int i = 0; i < 4; ++i) {
             // 위치 측정: -I_3 @ base pos (0), I_3 @ foot_i pos
-            C.block<3, 3>(i * 3, 0) = -Eigen::Matrix3d::Identity();      // base pos
-            C.block<3, 3>(i * 3, 6 + i * 3) = Eigen::Matrix3d::Identity();  // foot_i pos
+            C.block<3, 3>(i * 3, 0) = -Eigen::Matrix3d::Identity();
+            C.block<3, 3>(i * 3, 6 + i * 3) = Eigen::Matrix3d::Identity();
             // 속도 측정: -I_3 @ base vel (3), I_3 @ foot_i vel
-            C.block<3, 3>(12 + i * 3, 3) = -Eigen::Matrix3d::Identity(); // base vel
-            C.block<3, 3>(12 + i * 3, 6 + i * 3) = Eigen::Matrix3d::Identity(); // foot_i vel
+            C.block<3, 3>(12 + i * 3, 3) = -Eigen::Matrix3d::Identity();
         }
         
         // y = z - Cx
@@ -161,6 +177,7 @@ struct KalmanFilter::Impl {
         // K = P*C^T * (C*P*C^T + R)^-1
         Eigen::MatrixXd S = C * P * C.transpose() + R;
         K = P * C.transpose() * S.inverse();
+        // cout << K << endl;
 
         // x = x + K * y
         x = x + K * y;

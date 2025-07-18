@@ -22,6 +22,7 @@ struct Body::Impl {
   Eigen::Matrix3d u_hat;
   double          theta;
   Eigen::Vector3d CoM_pos_W;
+  Eigen::Vector3d foot_pos_W[4];
   Eigen::Vector3d r_W[4];
 
   Eigen::Matrix3d exp_omega_dt;
@@ -76,9 +77,12 @@ struct Body::Impl {
   void foot_vector(const mjModel* m, mjData* d) {
     CoM_pos_W << d->subtree_com[0], d->subtree_com[1], d->subtree_com[2];
     for(int i=0; i<4; ++i) {
-      r_W[i] << d->site_xpos[3*i+3] - CoM_pos_W[0],
-                d->site_xpos[3*i+4] - CoM_pos_W[1],
-                d->site_xpos[3*i+5] - CoM_pos_W[2];
+      // World 좌표계 기준 발 위치 저장
+      foot_pos_W[i] << d->site_xpos[3*i+3],
+                       d->site_xpos[3*i+4],
+                       d->site_xpos[3*i+5];
+      // 상대 위치 저장
+      r_W[i] = foot_pos_W[i] - CoM_pos_W;
     }
   }
 
@@ -86,14 +90,14 @@ struct Body::Impl {
     // 기본 trot reference
     x_ref << 0,        // roll
              0,        // pitch
-             0.5*t,    // yaw
-             0.,       // x
+             0,        // yaw
+             0.01*t*t,       // x
              0,        // y
              0.3536,   // z
              0,        // roll dot
              0,        // pitch dot
-             0.5,      // yaw dot
-             0.,       // x dot
+             0,      // yaw dot
+             0.01*t,       // x dot
              0,        // y dot
              0;        // z dot
 
@@ -233,4 +237,8 @@ double Body::get_Body_M() const {
 
 Eigen::Vector3d Body::get_r_W(int i) const {
   return pimpl_->r_W[i];
+}
+
+Eigen::Vector3d Body::get_foot_pos_W(int i) const {
+  return pimpl_->foot_pos_W[i];
 }

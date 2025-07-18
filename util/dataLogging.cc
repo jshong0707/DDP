@@ -21,6 +21,10 @@ void dataLogging::cal_value(const mjModel* m, mjData* d, Integrate& I)
         opt_GRF[leg] = I.get_opt_GRF(leg);
     }  
     x0 = I.get_x0();
+    x0_est = I.get_x0_est();
+    for (int i=0; i<4; i++) {
+        W_foot_pos[i] = I.get_W_foot_pos(i);
+    }
     x_ref = I.get_x_ref();
     
     
@@ -81,20 +85,20 @@ void dataLogging::init_save_data_Body(FILE* fid)
     //fprintf(fid, "Body_pos_roll_ref, Body_pos_pitch_ref, Body_pos_yaw_ref, Body_vel_roll_ref, Body_vel_pitch_ref, Body_vel_yaw_ref");
     //fprintf(fid, "Body_pos_x_ref, Body_pos_y_ref, Body_pos_z_ref, Body_vel_x_ref, Body_vel_y_ref, Body_vel_z_ref, ");
 
-    fprint(fid, "Body_pos_x, Body_pos_y, Body_pos_z, Body_vel_x, Body_vel_y, Body_vel_z, ");
-    fprint(fid, "Body_pos_x_est, Body_pos_y_est, Body_pos_z_est, Body_vel_x_est, Body_vel_y_est, Body_vel_z_est, ");
+    fprintf(fid, "Body_pos_x, Body_pos_y, Body_pos_z, Body_vel_x, Body_vel_y, Body_vel_z, ");
+    fprintf(fid, "Body_pos_x_est, Body_pos_y_est, Body_pos_z_est, Body_vel_x_est, Body_vel_y_est, Body_vel_z_est, ");
 
-    fprint(fid, "FL_foot_pos_x, FL_foot_pos_y, FL_foot_pos_z, ");
-    fprint(fid, "FL_foot_pos_x_est, FL_foot_pos_y_est, FL_foot_pos_z_est, ");
+    fprintf(fid, "FL_foot_pos_x, FL_foot_pos_y, FL_foot_pos_z, ");
+    fprintf(fid, "FL_foot_pos_x_est, FL_foot_pos_y_est, FL_foot_pos_z_est, ");
 
-    fprint(fid, "FR_foot_pos_x, FR_foot_pos_y, FR_foot_pos_z, ");
-    fprint(fid, "FR_foot_pos_x_est, FR_foot_pos_y_est, FR_foot_pos_z_est, ");
+    fprintf(fid, "FR_foot_pos_x, FR_foot_pos_y, FR_foot_pos_z, ");
+    fprintf(fid, "FR_foot_pos_x_est, FR_foot_pos_y_est, FR_foot_pos_z_est, ");
 
-    fprint(fid, "RL_foot_pos_x, RL_foot_pos_y, RL_foot_pos_z, ");
-    fprint(fid, "RL_foot_pos_x_est, RL_foot_pos_y_est, RL_foot_pos_z_est, ");
+    fprintf(fid, "RL_foot_pos_x, RL_foot_pos_y, RL_foot_pos_z, ");
+    fprintf(fid, "RL_foot_pos_x_est, RL_foot_pos_y_est, RL_foot_pos_z_est, ");
 
-    fprint(fid, "RR_foot_pos_x, RR_foot_pos_y, RR_foot_pos_z, ");
-    fprint(fid, "RR_foot_pos_x_est, RR_foot_pos_y_est, RR_foot_pos_z_est, ");
+    fprintf(fid, "RR_foot_pos_x, RR_foot_pos_y, RR_foot_pos_z, ");
+    fprintf(fid, "RR_foot_pos_x_est, RR_foot_pos_y_est, RR_foot_pos_z_est, ");
     
     // Don't remove the newline
     fprintf(fid, "\n");
@@ -116,20 +120,20 @@ void dataLogging::save_data_Body(const mjModel* m, mjData* d, Body &B, FILE* fid
     // fprintf(fid, "%f, %f, %f, ", B.get_vel_des(t)[0], B.get_vel_des(t)[1], B.get_vel_des(t)[2]);
     // fprintf(fid, "%f, %f, %f ", B.get_vel_des(t)[3], B.get_vel_des(t)[4], B.get_vel_des(t)[5]);
     
-    fprint(fid, "%f, %f, %f, %f, %f, %f, ", x0[6], x0[7], x0[8], x0[9], x0[10], x0[11]);
-    fprint(fid, "%f, %f, %f, %f, %f, %f, ", );
+    fprintf(fid, "%f, %f, %f, %f, %f, %f, ", x0[3], x0[4], x0[5], x0[9], x0[10], x0[11]);
+    fprintf(fid, "%f, %f, %f, %f, %f, %f, ", x0_est[0], x0_est[1], x0_est[2], x0_est[3], x0_est[4], x0_est[5]);
 
-    fprint(fid, "%f, %f, %f, ",);
-    fprint(fid, "%f, %f, %f, ",);
+    fprintf(fid, "%f, %f, %f, ", W_foot_pos[0][0], W_foot_pos[0][1], W_foot_pos[0][2]);
+    fprintf(fid, "%f, %f, %f, ", x0_est[6], x0_est[7], x0_est[8]);
 
-    fprint(fid, "%f, %f, %f, ",);
-    fprint(fid, "%f, %f, %f, ",);
+    fprintf(fid, "%f, %f, %f, ", W_foot_pos[1][0], W_foot_pos[1][1], W_foot_pos[1][2]);
+    fprintf(fid, "%f, %f, %f, ", x0_est[9], x0_est[10], x0_est[11]);
 
-    fprint(fid, "%f, %f, %f, ",);
-    fprint(fid, "%f, %f, %f, ",);
+    fprintf(fid, "%f, %f, %f, ", W_foot_pos[2][0], W_foot_pos[2][1], W_foot_pos[2][2]);
+    fprintf(fid, "%f, %f, %f, ", x0_est[12], x0_est[13], x0_est[14]);
 
-    fprint(fid, "%f, %f, %f, ",);
-    fprint(fid, "%f, %f, %f, ",);
+    fprintf(fid, "%f, %f, %f, ", W_foot_pos[3][0], W_foot_pos[3][1], W_foot_pos[3][2]);
+    fprintf(fid, "%f, %f, %f, ", x0_est[15], x0_est[16], x0_est[17]);
 
     // Don't remove the newline
     fprintf(fid, "\n");
