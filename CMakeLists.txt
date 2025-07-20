@@ -12,6 +12,7 @@ project(
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
   set(CMAKE_CXX_EXTENSIONS OFF)
   add_compile_options(-std=gnu++17)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
   
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
@@ -30,7 +31,7 @@ find_library(MUJOCO_LIB
 file(GLOB_RECURSE SOURCES "simulate.cpp" "glfw_adapter.cpp" "glfw_dispatch.cpp" "lodepng.cpp" "platform_ui_adapter.cpp" 
 "main.cc" "globals.cc" "filter.cc" "Controller.cc" "Integrate.cc" "Trajectory.cc" "BezierCurve.cc"
  "Actuator.cc" "F_Kinematics.cc" "B_Kinematics.cc" "Body.cc" "MPC.cc" "MPC_util.cc"
- "dataLogging.cc" "FSM.cc" "robot_parameter.cc" "KF.cc")
+ "dataLogging.cc" "FSM.cc" "robot_parameter.cc" "KF.cc" "ESKF.cc")
 
 
 add_executable (main ${SOURCES})

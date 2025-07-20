@@ -13,6 +13,7 @@ class MPC;
 class Controller;
 class FSM;
 class KalmanFilter;
+class ErrorStateKalmanFilter;
 
 class Integrate
 {
@@ -23,7 +24,8 @@ public:
             MPC             &M,
             Controller      &C,
             FSM             &FSM_,
-            KalmanFilter    &KF);
+            KalmanFilter    &KF,
+            ErrorStateKalmanFilter  &ESKF);
   ~Integrate();
 
   void sensor_measure(const mjModel* m, mjData* d);
@@ -39,7 +41,8 @@ public:
   Eigen::VectorXd get_leg_pos_ref();
   Eigen::VectorXd get_leg_pos();
   Eigen::VectorXd get_x0();
-  Eigen::VectorXd get_x0_est();
+  Eigen::VectorXd get_KF_x0_est();
+  Eigen::VectorXd get_ESKF_x0_est();
   Eigen::VectorXd get_W_foot_pos(int i);
   Eigen::VectorXd get_x_ref();
   Eigen::VectorXd get_opt_GRF(int leg);

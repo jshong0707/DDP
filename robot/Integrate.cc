@@ -6,6 +6,7 @@
 #include "Controller.hpp"
 #include "FSM.hpp"
 #include "KF.hpp"
+#include "ESKF.hpp"
 #include <array>
 
 struct Integrate::Impl {
@@ -16,6 +17,7 @@ struct Integrate::Impl {
   Controller      &C;
   FSM             &FSM_;
   KalmanFilter    &KF;
+  ErrorStateKalmanFilter  &ESKF;
 
   double t = 0;
   double optimization_t = 0;
@@ -41,7 +43,8 @@ struct Integrate::Impl {
        MPC             &m,
        Controller      &c,
        FSM             &f,
-       KalmanFilter    &kf)
+       KalmanFilter    &kf,
+       ErrorStateKalmanFilter &eskf)
     : pino(p),
       Traj(t_),
       B(b),
@@ -49,6 +52,7 @@ struct Integrate::Impl {
       C(c),
       FSM_(f),
       KF(kf),
+      ESKF(eskf),
       q(Eigen::VectorXd::Zero(19)),
       qd(Eigen::VectorXd::Zero(18)),
       qdd(Eigen::VectorXd::Zero(18)),
@@ -75,8 +79,9 @@ Integrate::Integrate(robot_parameter &pino,
                      MPC             &M,
                      Controller      &C,
                      FSM             &FSM_,
-                     KalmanFilter    &KF)
-  : pimpl_(std::make_unique<Impl>(pino, Traj, B, M, C, FSM_, KF))
+                     KalmanFilter    &KF,
+                     ErrorStateKalmanFilter &ESKF)
+  : pimpl_(std::make_unique<Impl>(pino, Traj, B, M, C, FSM_, KF, ESKF))
 {}
 
 Integrate::~Integrate() = default;
@@ -93,43 +98,66 @@ void Integrate::sensor_measure(const mjModel* m, mjData* d) {
   i.M.foot_vector(m, d);
 
   // Q: 상태 예측 오차를 모델링 (가속 노이즈 등)
-  Eigen::MatrixXd Q = Eigen::MatrixXd::Zero(18, 18);
-  Q.block<3,3>(0, 0) << 1e-2, 0, 0, // body x pos
-                        0, 1e-2, 0, // body y pos
-                        0, 0, 1e-2; // body z pos
-
-  Q.block<3,3>(3, 3) << 1e-2, 0, 0, // body x vel
-                        0, 1e-2, 0, // body y vel
-                        0, 0, 1e-2; // body z vel
-
-  Q.block<3,3>(6, 6) << 1e-2, 0, 0, // foot x
-                        0, 1e-2, 0, // foot y
-                        0, 0, 1e-2; // foot z
-  Q.block<3,3>(9, 9) = Q.block<3,3>(6, 6);
-  Q.block<3,3>(12, 12) = Q.block<3,3>(6, 6);
+  Eigen::MatrixXd KF_Q = Eigen::MatrixXd::Zero(18, 18);
+  KF_Q.block<3,3>(0, 0) = Eigen::MatrixXd::Identity(3, 3) * 1e-4;
+  KF_Q.block<3,3>(3, 3) = Eigen::MatrixXd::Identity(3, 3) * 1e-4;
+  for (int j=0; j<4; j++) {
+    if (i.is_contact[j] == false) {
+      KF_Q.block<3,3>(6 + 3 * j, 6 + 3 * j) = Eigen::MatrixXd::Identity(3, 3) * 1e-1;
+    }
+    else if (i.is_contact[j] == true) {
+      KF_Q.block<3,3>(6 + 3 * j, 6 + 3 * j) = Eigen::MatrixXd::Identity(3, 3) * 1e-6;
+    }
+  }
 
   // R: 측정 오차를 모델링 (상대 발 위치/속도 센서 노이즈)
-  Eigen::MatrixXd R = Eigen::MatrixXd::Zero(24, 24);
-  R.block<3,3>(0, 0) << 1e-2, 0, 0, // body to foot x pos
-                        0, 1e-2, 0, // body to foot y pos
-                        0, 0, 1e-2; // body to foot z pos
-  R.block<3,3>(3, 3) = R.block<3,3>(0, 0);
-  R.block<3,3>(6, 6) = R.block<3,3>(0, 0);
-  R.block<3,3>(9, 9) = R.block<3,3>(0, 0);
+  Eigen::MatrixXd KF_R = Eigen::MatrixXd::Zero(24, 24);
+  KF_R.block<3,3>(0, 0) = Eigen::MatrixXd::Identity(3, 3) * 1e-3;
+  KF_R.block<3,3>(3, 3) = KF_R.block<3,3>(0, 0);
+  KF_R.block<3,3>(6, 6) = KF_R.block<3,3>(0, 0);
+  KF_R.block<3,3>(9, 9) = KF_R.block<3,3>(0, 0);
+  KF_R.block<3,3>(12, 12) = Eigen::MatrixXd::Identity(3, 3) * 1e-3;
+  KF_R.block<3,3>(15, 15) = KF_R.block<3,3>(12, 12);
+  KF_R.block<3,3>(18, 18) = KF_R.block<3,3>(12, 12);
+  KF_R.block<3,3>(21, 21) = KF_R.block<3,3>(12, 12);
 
-  R.block<3,3>(12, 12) << 1e-12, 0, 0, // body to foot x pos
-                          0, 1e-12, 0, // body to foot y pos
-                          0, 0, 1e-12; // body to foot z pos
-  R.block<3,3>(15, 15) = R.block<3,3>(12, 12);
-  R.block<3,3>(18, 18) = R.block<3,3>(12, 12);
-  R.block<3,3>(21, 21) = R.block<3,3>(12, 12);
-
-  i.KF.setProcessNoise(Q);
-  i.KF.setMeasurementNoise(R);
+  i.KF.setProcessNoise(KF_Q);
+  i.KF.setMeasurementNoise(KF_R);
 
   i.KF.prediction_step();
   i.KF.sensor_measure(m, d);
   i.KF.update_step();
+
+  Eigen::MatrixXd ESKF_Q_f = Eigen::MatrixXd::Identity(3, 3) * 1e-4;
+  Eigen::MatrixXd ESKF_Q_fb = Eigen::MatrixXd::Identity(3, 3) * 1e-4;
+  Eigen::MatrixXd ESKF_Q_w = Eigen::MatrixXd::Identity(3, 3) * 1e-4;
+  Eigen::MatrixXd ESKF_Q_wb = Eigen::MatrixXd::Identity(3, 3) * 1e-20;
+  Eigen::MatrixXd ESKF_Q_p = Eigen::MatrixXd::Identity(12, 12) * 1e-2;
+  for (int j=0; j<4; j++) {
+    if (i.is_contact[j] == false) {
+      ESKF_Q_p.block<3,3>(3 * j, 3 * j) = Eigen::MatrixXd::Identity(3, 3) * 1e-1;
+    }
+    else if (i.is_contact[j] == true) {
+      ESKF_Q_p.block<3,3>(3 * j, 3 * j) = Eigen::MatrixXd::Identity(3, 3) * 1e-6;
+    }
+  }
+  i.ESKF.setProcessAccelNoise(ESKF_Q_f);
+  i.ESKF.setProcessAccelBiasNoise(ESKF_Q_fb);
+  i.ESKF.setProcessGyroNoise(ESKF_Q_w);
+  i.ESKF.setProcessGyroBiasNoise(ESKF_Q_wb);
+  i.ESKF.setProcessFootNoise(ESKF_Q_p);
+
+  Eigen::MatrixXd ESKF_R = Eigen::MatrixXd::Zero(12, 12);
+  ESKF_R.block<3,3>(0, 0) = Eigen::MatrixXd::Identity(3, 3) * 1e-3;
+  ESKF_R.block<3,3>(3, 3) = ESKF_R.block<3,3>(0, 0);
+  ESKF_R.block<3,3>(6, 6) = ESKF_R.block<3,3>(0, 0);
+  ESKF_R.block<3,3>(9, 9) = ESKF_R.block<3,3>(0, 0);
+
+  i.ESKF.setMeasurementNoise(ESKF_R);
+
+  i.ESKF.prediction_step();
+  i.ESKF.sensor_measure(m, d);
+  i.ESKF.update_step();
 }
 
 void Integrate::get_error(double /*unused*/) {
@@ -195,7 +223,8 @@ Eigen::Vector3d Integrate::get_RR_J_input() { return pimpl_->B_Joint_input[1]; }
 Eigen::VectorXd Integrate::get_leg_pos_ref() { return pimpl_->leg_pos_ref; }
 Eigen::VectorXd Integrate::get_leg_pos()     { return pimpl_->leg_pos; }
 Eigen::VectorXd Integrate::get_x0()          { return pimpl_->B.get_x0(); }
-Eigen::VectorXd Integrate::get_x0_est()      { return pimpl_->KF.get_state(); }
+Eigen::VectorXd Integrate::get_KF_x0_est()      { return pimpl_->KF.get_state(); }
+Eigen::VectorXd Integrate::get_ESKF_x0_est()      { return pimpl_->ESKF.get_state(); }
 Eigen::VectorXd Integrate::get_W_foot_pos(int i)  { return pimpl_->B.get_foot_pos_W(i); }
 Eigen::VectorXd Integrate::get_x_ref()       { return pimpl_->B.get_x_ref(pimpl_->t); }
 Eigen::VectorXd Integrate::get_opt_GRF(int leg) { return pimpl_->opt_GRF[leg]; }

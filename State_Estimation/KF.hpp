@@ -14,7 +14,7 @@
 #include <pinocchio/algorithm/model.hpp>
 #include <pinocchio/algorithm/rnea.hpp>
 #include <pinocchio/algorithm/crba.hpp>
-
+#include <pinocchio/math/rpy.hpp>        // for computeRpy
 class KalmanFilter {
 public:
     KalmanFilter();

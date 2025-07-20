@@ -1,10 +1,18 @@
 #include "KF.hpp"
 #include <iostream>
 
+namespace {
+inline double wrapToPi(double angle) {
+    double wrapped = std::remainder(angle, 2.0 * M_PI);
+    if (wrapped <= -M_PI)
+        wrapped += 2.0 * M_PI;
+    return wrapped;
+}
+}
 struct KalmanFilter::Impl {
     // Filter & Constants
     filter F;
-    const Eigen::Vector3d g = Eigen::Vector3d(0, 0, -9.81);
+    const Eigen::Vector3d g = Eigen::Vector3d(0, 0, 9.81);
 
     // Pinocchio
     pinocchio::Model model;
@@ -24,7 +32,7 @@ struct KalmanFilter::Impl {
     Eigen::MatrixXd B = Eigen::MatrixXd::Zero(18, 3);      // Control (accel)
     Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(18, 18) * 1e-3;
 
-    Eigen::MatrixXd P = Eigen::MatrixXd::Identity(18, 18); // Covariance
+    Eigen::MatrixXd P = Eigen::MatrixXd::Identity(18, 18) * 1e-1; // Covariance
 
     Eigen::MatrixXd C = Eigen::MatrixXd::Zero(24, 18);     // Measurement matrix
     Eigen::MatrixXd R = Eigen::MatrixXd::Identity(24, 24) * 1e-2;
@@ -47,13 +55,20 @@ struct KalmanFilter::Impl {
     // Rotation
     Eigen::Matrix3d omega_hat = Eigen::Matrix3d::Zero();
     Eigen::Matrix3d R_WB = Eigen::Matrix3d::Identity();
+    Eigen::Vector3d euler_raw = Eigen::Vector3d::Zero();
+    Eigen::Vector3d euler = Eigen::Vector3d::Zero();
 
     // relative foot pos and vel
     std::array<Eigen::Vector3d, 4> foot_pos_rel_;
     std::array<Eigen::Vector3d, 4> foot_vel_rel_;
 
     Impl() {
-        x[2] = 0.375;
+        x << 0, 0, 0.3536, 
+             0, 0, 0, 
+             0.2, 0.15, 0, 
+             0.2, -0.15, 0, 
+             -0.2, 0.15, 0, 
+             -0.2, -0.15, 0;
 
         // Load URDF model
         const std::string urdf_path = "../urdf/3D_Quad.urdf";
@@ -171,9 +186,17 @@ struct KalmanFilter::Impl {
             // 속도 측정: -I_3 @ base vel (3), I_3 @ foot_i vel
             C.block<3, 3>(12 + i * 3, 3) = -Eigen::Matrix3d::Identity();
         }
+
+        // hx = Cx
+        Eigen::VectorXd hx = Eigen::VectorXd::Zero(24);
+        hx = C * x;
+        for (int i = 0; i < 4; i++) {
+            z.segment<3>(3 * i) = R_WB.transpose() * z.segment<3>(3 * i);
+            z.segment<3>(12 + 3 * i) = R_WB.transpose() * z.segment<3>(12 + 3 * i);
+        }
         
-        // y = z - Cx
-        y = z - C * x;
+        // y = z - hx
+        y = z - hx;
         // K = P*C^T * (C*P*C^T + R)^-1
         Eigen::MatrixXd S = C * P * C.transpose() + R;
         K = P * C.transpose() * S.inverse();
@@ -182,6 +205,9 @@ struct KalmanFilter::Impl {
         // x = x + K * y
         x = x + K * y;
         P = (Eigen::MatrixXd::Identity(18,18) - K * C) * P;
+
+        // Euler Angle making
+        euler_raw = pinocchio::rpy::matrixToRpy(R_WB).reverse();
     }
 
     void setProcessNoise(const Eigen::MatrixXd& Q_in) {
@@ -199,7 +225,15 @@ struct KalmanFilter::Impl {
     }
 
     Eigen::VectorXd get_state() const {
-        return x;
+        Eigen::VectorXd state(21);
+        state.segment<3>(0) = x.segment<3>(0);
+        state.segment<3>(3) = x.segment<3>(3);
+        state.segment<3>(6) = euler_raw;
+        state.segment<3>(9) = x.segment<3>(6);
+        state.segment<3>(12) = x.segment<3>(9);
+        state.segment<3>(15) = x.segment<3>(12);
+        state.segment<3>(18) = x.segment<3>(15);
+        return state;
     }
 };
 

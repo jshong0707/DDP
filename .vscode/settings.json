@@ -87,6 +87,7 @@
         "concepts": "cpp",
         "numbers": "cpp",
         "semaphore": "cpp",
-        "stop_token": "cpp"
+        "stop_token": "cpp",
+        "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json"
     }
 }

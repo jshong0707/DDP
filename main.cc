@@ -46,6 +46,7 @@
 #include "F_Kinematics.hpp"
 #include "B_Kinematics.hpp"
 #include "KF.hpp"
+#include "ESKF.hpp"
 
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
@@ -122,7 +123,9 @@ Controller C;
 
 KalmanFilter KF;
 
-Integrate I(pino, Traj, B, M, C, FSM_, KF);
+ErrorStateKalmanFilter ESKF;
+
+Integrate I(pino, Traj, B, M, C, FSM_, KF, ESKF);
 
 dataLogging Logging;
 

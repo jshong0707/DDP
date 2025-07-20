@@ -33,7 +33,8 @@ private:
 
     
     VectorXd x0 = VectorXd::Zero(12);
-    VectorXd x0_est = VectorXd::Zero(18);
+    VectorXd KF_x0_est = VectorXd::Zero(21);
+    VectorXd ESKF_x0_est = VectorXd::Zero(21);
     Vector3d W_foot_pos[4];
     VectorXd x_ref = VectorXd::Zero(12);
     Vector3d opt_GRF[4];
