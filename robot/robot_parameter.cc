@@ -19,7 +19,7 @@ struct robot_parameter::Impl
   pinocchio::Data  data_;
 
   // URDF 에 정의된 프레임 이름
-  const std::string imu_frame = "imu_joint";
+  const std::string imu_frame = "imu_link";
 
   // 각 다리별 HAA 지점부터 foot 지점까지의 링크 이름
   const std::array<std::array<std::string,4>,4> legs = {{
@@ -32,47 +32,52 @@ struct robot_parameter::Impl
   // 계산된 결과 저장
   std::array<Eigen::Vector3d,4> leg_pos;    // HAA→foot 위치
   std::array<Eigen::Matrix3d,4> J_B;        // Body 프레임 자코비안
+  std::array<Eigen::Vector3d,4> foot_vector;
   Eigen::Matrix3d              R_BW;       // Body→World 회전
   Eigen::Vector3d              rpy;        // yaw‑pitch‑roll
-
+  Eigen::Quaterniond quat;
   Impl()
   {
     constexpr char URDF[] = "../urdf/3D_Quad.urdf";
     
-    pinocchio::urdf::buildModel(
-      URDF,
-      pinocchio::JointModelFreeFlyer(),
-      model_);
+    pinocchio::urdf::buildModel(URDF, model_);
     data_ = pinocchio::Data(model_);
 
     std::cout << "Pinocchio model loaded successfully!\n"
               << ", nq = "    << model_.nq    << "\n";
   }
 
-  // q, qd, qdd 받아서 순·역·자코비안·RPY 계산
   void robot_param(const Eigen::VectorXd &q,
                    const Eigen::VectorXd &qd,
                    const Eigen::VectorXd &qdd)
   {
     using namespace pinocchio;
 
-    // 순동역학/자코비안/프레임 업데이트
     forwardKinematics(model_, data_, q, qd);
     computeJointJacobians(model_, data_, q);
     updateFramePlacements(model_, data_);
 
-    // IMU 프레임 정보
     const auto &oMf_imu = data_.oMf[model_.getFrameId(imu_frame)];
     R_BW = oMf_imu.rotation();
 
-    // 각 다리별 HAA→foot 위치와 Body 프레임 자코비안 계산
+    // cout << "pino\n"<< R_BW << endl;
+    // cout << "mujoco\n" << quat.toRotationMatrix() << endl;    
+
+    // 각 다리별 HAA→foot 위치와 Body 프레임 자코비안 계산  
     for(int i = 0; i < 4; ++i)
     {
       // HAA→foot 변환
       const auto &oMf_HAA  = data_.oMf[model_.getFrameId(legs[i][0])];
       const auto &oMf_foot = data_.oMf[model_.getFrameId(legs[i][3])];
       auto T_HAA2foot = oMf_HAA.inverse() * oMf_foot;
+      auto T_imu2foot = oMf_imu.inverse() * oMf_foot;
+
       leg_pos[i] = T_HAA2foot.translation();
+      foot_vector[i] = T_imu2foot.translation();
+
+      cout << "pino\n" << foot_vector[0] << endl;
+      // cout << i << ": " << leg_pos[i][0] << ": " << leg_pos[i][1] << ": " << leg_pos[i][2] << endl;
+
 
       // World‑aligned 자코비안 → Body 프레임
       Eigen::MatrixXd J6(6, model_.nv);
@@ -86,12 +91,15 @@ struct robot_parameter::Impl
       J_B[i] = R_BW.transpose()
              * J6.block(0, 6 + 3*i, 3, 3);
     }
-
+    
+    // cout << "J_B\n" << J_B[0] << endl;
     // RPY(Z‑Y‑X) → yaw,‑pitch,‑roll
     {
       auto ypr = rpy::matrixToRpy(R_BW);
       // Pinocchio 기본 [roll,pitch,yaw]를 [yaw,‑pitch,‑roll]로 조정
-      rpy = { ypr[2], -ypr[1], -ypr[0] };
+      // rpy = { ypr[2], -ypr[1], -ypr[0] };
+      rpy = { ypr[0], ypr[1], ypr[2] };
+
     }
   }
 
@@ -132,3 +140,6 @@ Eigen::Vector3d robot_parameter::get_rpy() const {
 Eigen::Matrix3d robot_parameter::get_R() const {
   return pimpl_->get_R();
 }
+
+void robot_parameter::get_quat(Eigen::Quaterniond mujoco_quat)
+ {pimpl_->quat = mujoco_quat;}

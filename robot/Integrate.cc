@@ -53,8 +53,9 @@ struct Integrate::Impl {
       leg_pos_ref(Eigen::VectorXd::Zero(12)),
       is_contact(4, false)
   {
+    // Initialize
     mpc_dt = M.get_dt();
-    // 초기화: FB_input, opt_GRF, pos_err, Contact 등
+
     for(int i=0;i<4;i++){
       FB_input[i].setZero();
       opt_GRF[i].setZero();
@@ -77,15 +78,20 @@ Integrate::Integrate(robot_parameter &pino,
 Integrate::~Integrate() = default;
 
 void Integrate::sensor_measure(const mjModel* m, mjData* d) {
-  auto &i = *pimpl_;
-  i.t = d->time;
-  for(int k=0;k<19;k++) i.q[k] = d->qpos[k];
-  for(int k=0;k<18;k++) i.qd[k] = d->qvel[k];
-  for(int k=0;k<18;k++) i.qdd[k] = d->qacc[k];
+  auto &p = *pimpl_;
+  p.t = d->time;
+  for(int k=0;k<19;k++) p.q[k] = d->qpos[k];
+  // Match between urdf and mjcf
+    p.q[3] = d->qpos[4]; // x  
+    p.q[4] = d->qpos[5]; // y
+    p.q[5] = d->qpos[6]; // z
+    p.q[6] = d->qpos[3]; // w
+  for(int k=0;k<18;k++) p.qd[k] = d->qvel[k];
+  for(int k=0;k<18;k++) p.qdd[k] = d->qacc[k];
 
-  i.pino.robot_param(i.q, i.qd, i.qdd);
-  i.B.sensor_measure(m, d);
-  i.M.foot_vector(m, d);
+  p.pino.robot_param(p.q, p.qd, p.qdd);
+  p.B.sensor_measure(m, d);
+  p.M.foot_vector(m, d);
 }
 
 void Integrate::get_error(double /*unused*/) {
@@ -95,6 +101,8 @@ void Integrate::get_error(double /*unused*/) {
   for(int k=0;k<4;k++){
     i.pos_err[k] = i.leg_pos_ref.segment<3>(3*k)
                  - i.pino.get_leg_pos(k);
+
+                //  cout << k << "\n" << i.pino.get_leg_pos(k) << endl;
   }
 }
 
@@ -113,30 +121,31 @@ void Integrate::Leg_controller() {
     i.M.Dynamics();
     i.M.SolveQP();
     i.opt_u = i.M.get_opt_u();
+
     if(i.t < 1e-8) i.opt_u.setZero();
-    for(int k=0;k<4;k++){
-        i.opt_u[3*k] = -i.opt_u[3*k];
-        i.opt_u[3*k + 1] = -i.opt_u[3*k + 1];
+      for(int k=0;k<4;k++){
+          i.opt_u[3*k] = -i.opt_u[3*k];
+          i.opt_u[3*k + 1] = -i.opt_u[3*k + 1];
+          i.opt_u[3*k + 2] = -i.opt_u[3*k + 2];
 
-      i.opt_GRF[k] = i.B.get_R().transpose()
-                     * (i.opt_u.segment<3>(3*k));
+        i.opt_GRF[k] = i.B.get_R().transpose()
+                      * (i.opt_u.segment<3>(3*k));
+      }
+      i.optimization_t += i.mpc_dt;
     }
-    i.optimization_t += i.mpc_dt;
-  }
 
-  i.F_Joint_input[0] = i.pino.get_Jacb(0).transpose()
-                      * (i.opt_GRF[0] + i.FB_input[0]);
-  i.F_Joint_input[1] = i.pino.get_Jacb(1).transpose()
-                      * (i.opt_GRF[1] + i.FB_input[1]);
-  i.B_Joint_input[0] = i.pino.get_Jacb(2).transpose()
-                      * (i.opt_GRF[2] + i.FB_input[2]);
-  i.B_Joint_input[1] = i.pino.get_Jacb(3).transpose()
-                      * (i.opt_GRF[3] + i.FB_input[3]);
+  i.F_Joint_input[0] = i.pino.get_Jacb(0).transpose() * (i.opt_GRF[0] + i.FB_input[0]);
+  i.F_Joint_input[1] = i.pino.get_Jacb(1).transpose() * (i.opt_GRF[1] + i.FB_input[1]);
+  i.B_Joint_input[0] = i.pino.get_Jacb(2).transpose() * (i.opt_GRF[2] + i.FB_input[2]);
+  i.B_Joint_input[1] = i.pino.get_Jacb(3).transpose() * (i.opt_GRF[3] + i.FB_input[3]);
+
+  // cout << "Jacobian \n" << i.pino.get_Jacb(0).transpose() << endl;
 
 }
 
 void Integrate::Data_log() {
   auto &i = *pimpl_;
+
   for(int k=0;k<4;k++){
     i.leg_pos.segment<3>(3*k)
       = i.pino.get_leg_pos(k);

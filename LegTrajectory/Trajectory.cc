@@ -50,10 +50,10 @@ struct Trajectory::Impl {
     // 내부 로직 메서드
     Eigen::VectorXd custom_leg_traj(double t) {
         // FL trajectory logic
-        pos_ref << 0, 0, 0.3536,
-                   0, 0, 0.3536,
-                  -0.1, 0, 0.3536,
-                  -0.1, 0, 0.3536;
+        pos_ref << 0, 0, -0.3536,
+                   0, 0, -0.3536,
+                  -0.1, 0, -0.3536,
+                  -0.1, 0, -0.3536;
         return pos_ref;
     }
 
@@ -84,11 +84,12 @@ struct Trajectory::Impl {
                 if (old_contact[leg]) {
                     stance_end_pos[leg] = get_foot_pos(leg);
                 }
+
                 Bz_points << stance_end_pos[leg][0], stance_end_pos[leg][1], stance_end_pos[leg][2],
-                            -0.2*stride/2 + w*CP[0], w*CP[1], 0.2,
-                            0.5*stride/2 + w*CP[0], w*CP[1], 0.25,
-                            0.8*stride/2 + w*CP[0], w*CP[1], 0.34,
-                            stride/2 + w*CP[0], w*CP[1], 0.36;
+                            -0.2*stride/2 + w*CP[0], w*CP[1], -0.2,
+                            0.5*stride/2 + w*CP[0], w*CP[1], -0.25,
+                            0.8*stride/2 + w*CP[0], w*CP[1], -0.34,
+                            stride/2 + w*CP[0], w*CP[1], -0.36;
 
                 CP = pdot - pdot_ref;
                 CP[2] = 0;

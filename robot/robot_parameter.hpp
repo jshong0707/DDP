@@ -22,8 +22,10 @@ public:
   Eigen::Matrix3d get_Jacb   (int i) const;
   Eigen::Vector3d get_rpy    ()    const;
   Eigen::Matrix3d get_R      ()    const;
+  void get_quat (Eigen::Quaterniond mujoco_quat);
 
 private:
   struct Impl;                    // Pimpl 전방 선언
   std::unique_ptr<Impl> pimpl_;   // 실제 구현은 Impl 안에
+  
 };

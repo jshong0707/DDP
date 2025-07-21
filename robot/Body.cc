@@ -23,7 +23,8 @@ struct Body::Impl {
   double          theta;
   Eigen::Vector3d CoM_pos_W;
   Eigen::Vector3d r_W[4];
-
+  Eigen::Quaterniond quat;
+  
   Eigen::Matrix3d exp_omega_dt;
   int   horizon;
   int   nx;
@@ -62,17 +63,23 @@ struct Body::Impl {
   void sensor_measure(const mjModel* m, mjData* d) {
     foot_vector(m, d);
 
-    Eigen::Vector4d quat;
-    quat << d->qpos[3], d->qpos[4], d->qpos[5], d->qpos[6];
-    Eigen::Vector3d th = F->quat2rpy(quat);
+    quat = Quaterniond(d->qpos[3], d->qpos[4], d->qpos[5], d->qpos[6]);
+    // quat = Quaterniond(d->qpos[6], d->qpos[4], d->qpos[5], d->qpos[6]);
+
+    Vector4d Quat;
+    Quat << d->qpos[3], d->qpos[4], d->qpos[5], d->qpos[6];
+    Eigen::Vector3d th = F->quat2rpy(Quat);
+    
     omega_IMU << d->sensordata[3], d->sensordata[4], d->sensordata[5];
 
     x0 << th[0], th[1], th[2],
           d->qpos[0], d->qpos[1], d->qpos[2],
           omega_IMU[0], omega_IMU[1], omega_IMU[2],
           d->qvel[0], d->qvel[1], d->qvel[2];
+
   }
 
+  
   void foot_vector(const mjModel* m, mjData* d) {
     CoM_pos_W << d->subtree_com[0], d->subtree_com[1], d->subtree_com[2];
     for(int i=0; i<4; ++i) {
@@ -80,20 +87,22 @@ struct Body::Impl {
                 d->site_xpos[3*i+4] - CoM_pos_W[1],
                 d->site_xpos[3*i+5] - CoM_pos_W[2];
     }
+
+    cout << "mujoco\n" << r_W[0] << endl;
   }
 
   Eigen::VectorXd get_x_ref(double t) {
     // 기본 trot reference
     x_ref << 0,        // roll
              0,        // pitch
-             0.5*t,    // yaw
-             0.,       // x
+             0.0*t,    // yaw
+             0.2*t,       // x
              0,        // y
              0.3536,   // z
              0,        // roll dot
              0,        // pitch dot
-             0.5,      // yaw dot
-             0.,       // x dot
+             0.0,      // yaw dot
+             0.2,       // x dot
              0,        // y dot
              0;        // z dot
 
@@ -156,32 +165,24 @@ struct Body::Impl {
 
   Eigen::Matrix3d get_R() const {
     Eigen::Vector3d RPY  = x0.segment<3>(0);
-    Eigen::Vector3d RPY2 = pino.get_rpy();
-    Eigen::Matrix3d R1, R2;
+    Eigen::Matrix3d R_BW;
 
-    // Body→World 회전 (RPY)
-    R1 << cos(RPY[2])*cos(RPY[1]),
-          cos(RPY[2])*sin(RPY[1])*sin(RPY[0]) - sin(RPY[2])*cos(RPY[0]),
-          cos(RPY[2])*sin(RPY[1])*cos(RPY[0]) + sin(RPY[2])*sin(RPY[0]),
-          sin(RPY[2])*cos(RPY[1]),
-          sin(RPY[2])*sin(RPY[1])*sin(RPY[0]) + cos(RPY[2])*cos(RPY[0]),
-          sin(RPY[2])*sin(RPY[1])*cos(RPY[0]) - cos(RPY[2])*sin(RPY[0]),
-          -sin(RPY[1]),
-          cos(RPY[1])*sin(RPY[0]),
-          cos(RPY[1])*cos(RPY[0]);
+    R_BW = quat.toRotationMatrix();
+    // // Body→World 회전 (RPY)
+    // R1 << cos(RPY[2])*cos(RPY[1]),
+    //       cos(RPY[2])*sin(RPY[1])*sin(RPY[0]) - sin(RPY[2])*cos(RPY[0]),
+    //       cos(RPY[2])*sin(RPY[1])*cos(RPY[0]) + sin(RPY[2])*sin(RPY[0]),
+    //       sin(RPY[2])*cos(RPY[1]),
+    //       sin(RPY[2])*sin(RPY[1])*sin(RPY[0]) + cos(RPY[2])*cos(RPY[0]),
+    //       sin(RPY[2])*sin(RPY[1])*cos(RPY[0]) - cos(RPY[2])*sin(RPY[0]),
+    //       -sin(RPY[1]),
+    //       cos(RPY[1])*sin(RPY[0]),
+    //       cos(RPY[1])*cos(RPY[0]);
 
-    R2 << cos(RPY2[2])*cos(RPY2[1]),
-          cos(RPY2[2])*sin(RPY2[1])*sin(RPY2[0]) - sin(RPY2[2])*cos(RPY2[0]),
-          cos(RPY2[2])*sin(RPY2[1])*cos(RPY2[0]) + sin(RPY2[2])*sin(RPY2[0]),
-          sin(RPY2[2])*cos(RPY2[1]),
-          sin(RPY2[2])*sin(RPY2[1])*sin(RPY2[0]) + cos(RPY2[2])*cos(RPY2[0]),
-          sin(RPY2[2])*sin(RPY2[1])*cos(RPY2[0]) - cos(RPY2[2])*sin(RPY2[0]),
-          -sin(RPY2[1]),
-          cos(RPY2[1])*sin(RPY2[0]),
-          cos(RPY2[1])*cos(RPY2[0]);
 
-    // 원본에선 R1만 반환했지만 필요시 R2를 사용 가능
-    return R1;
+          // cout << "Used R\n" << R_BW << endl;
+
+    return R_BW;
   }
 };
 

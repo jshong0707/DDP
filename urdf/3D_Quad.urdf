@@ -18,14 +18,14 @@
 	<!-- 기준 -->
     <link name="root"/>
 
-    <joint name="world_to_torso_front_joint" type="fixed">  <!--type="floating"-->
+    <joint name="world_to_torso_front_joint" type="floating">  <!--type="floating"-->
         <parent link="root"/>
         <child link="torso_front_link"/>
         <origin xyz="0 0 0.375" rpy="0 0 0"/> </joint>
 
     <link name="torso_front_link">
         <inertial>
-            <mass value="0.5"/>
+            <mass value="1.4"/>
             <origin xyz="0.1 0 0" rpy="0 0 0"/> <inertia ixx="0.000225" ixy="0" ixz="0" iyy="0.001695" iyz="0" izz="0.001695"/>
         </inertial>
         <visual>
@@ -45,7 +45,7 @@
     <joint name="imu_joint" type="fixed">
         <parent link="torso_front_link"/>
         <child link="imu_link"/>
-        <origin xyz="0 0 0" rpy="3.14159 0 0"/> </joint>
+        <origin xyz="0 0 0" rpy="0 0 0"/> </joint>
     <link name="imu_link">
         <visual>
             <geometry>
@@ -56,19 +56,20 @@
     </link>
 
         
-        <!-- Fixed Joint for Jacobian -->
-        <link name="FLHAA_point"/>
-
+            
         <joint name="FLHAA_point_fixed" type="fixed">
             <parent link="torso_front_link"/>
             <child  link="FLHAA_point"/>
-            <origin xyz="0.2 0.15 0" rpy="3.14159 0 0"/>   <!-- HAA 원점과 동일 -->
+            <origin xyz="0.2 0.15 0" rpy="0 0 0"/>   <!-- HAA 원점과 동일 -->
         </joint>
 
+    <!-- Fixed Joint for Jacobian -->
+        <link name="FLHAA_point"/>
+        
     <joint name="FLHAA" type="revolute">
         <parent link="torso_front_link"/>
         <child link="FLHAA_link"/>
-        <origin xyz="0.2 0.15 0" rpy="0 1.5708 0"/> <axis xyz="0 0 1"/>
+        <origin xyz="0.2 0.15 0" rpy="0 0 0"/> <axis xyz="1 0 0"/>
         <limit lower="-0.8727" upper="0.8727" effort="60" velocity="10"/> </joint>
     <link name="FLHAA_link">
         <inertial>
@@ -81,7 +82,7 @@
     <joint name="FLHIP" type="revolute">
         <parent link="FLHAA_link"/>
         <child link="FLHIP_link"/>
-        <origin xyz="0 0 0" rpy="0 0 0"/> <axis xyz="0 -1 0"/>
+        <origin xyz="0 0 0" rpy="0 1.5708 0"/> <axis xyz="0 -1 0"/>
         <limit lower="0" upper="3.14159" effort="60" velocity="10"/> </joint>
     <link name="FLHIP_link">
         <inertial>
@@ -129,6 +130,7 @@
         <child link="FL_foot"/>
         <origin xyz="0 0 -0.25" rpy="0 0 0"/> </joint>
     <link name="FL_foot">
+    <!-- <origin xyz="0 0 0" rpy="0 0 0"/>  -->
         <visual>
             <geometry>
                 <sphere radius="0.01"/>
@@ -136,6 +138,7 @@
             <material name="foot_site_color"/>
         </visual>
     </link>
+ 
 
         <!-- Fixed Joint for Jacobian -->
         <link name="FRHAA_point"/>
@@ -143,14 +146,14 @@
         <joint name="FRHAA_point_fixed" type="fixed">
             <parent link="torso_front_link"/>
             <child  link="FRHAA_point"/>
-            <origin xyz="0.2 -0.15 0" rpy="3.14159 0 0"/>   <!-- HAA 원점과 동일 -->
+            <origin xyz="0.2 -0.15 0" rpy="0 0 0"/>   <!-- HAA 원점과 동일 -->
         </joint>
 
     <joint name="FRHAA" type="revolute">
         <parent link="torso_front_link"/>
         <child link="FRHAA_link"/>
-        <origin xyz="0.2 -0.15 0" rpy="0 1.5708 0"/>
-        <axis xyz="0 0 1"/>
+        <origin xyz="0.2 -0.15 0" rpy="0 0 0"/>
+        <axis xyz="1 0 0"/>
         <limit lower="-0.8727" upper="0.8727" effort="60" velocity="10"/>
         </joint>
     <link name="FRHAA_link">
@@ -160,7 +163,7 @@
     <joint name="FRHIP" type="revolute">
         <parent link="FRHAA_link"/>
         <child link="FRHIP_link"/>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 0 0" rpy="0 1.5708 0"/>
         <axis xyz="0 -1 0"/>
         <limit lower="0" upper="3.14159" effort="60" velocity="10"/>
         </joint>
@@ -185,50 +188,24 @@
     <joint name="FR_foot_joint" type="fixed">
         <parent link="FRKNEE_link"/>
         <child link="FR_foot"/>
-        <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+        <origin xyz="0 0 -0.25" rpy="3.14159 0 0"/>
     </joint>
     <link name="FR_foot"> <visual> <geometry> <sphere radius="0.01"/> </geometry> <material name="foot_site_color"/> </visual> </link>
 
-
-    <joint name="torso_front_to_torso_back_joint" type="fixed">
-        <parent link="torso_front_link"/>
-        <child link="torso_back_link"/>
-        <origin xyz="0 0 0" rpy="0 0 0"/> </joint>
-    <link name="torso_back_link">
-        <inertial>
-            <mass value="0.9"/>
-            <origin xyz="-0.1 0 0" rpy="0 0 0"/>
-            <inertia ixx="0.000225" ixy="0" ixz="0" iyy="0.001695" iyz="0" izz="0.001695"/>
-        </inertial>
-        <visual>
-            <geometry>
-                <box size="0.1 0.1 0.01"/>
-            </geometry>
-            <origin xyz="-0.1 0 0" rpy="0 0 0"/>
-            <material name="torso_back_mat"/>
-        </visual>
-        <collision>
-            <geometry>
-                <box size="0.1 0.1 0.01"/>
-            </geometry>
-            <origin xyz="-0.1 0 0" rpy="0 0 0"/>
-        </collision>
-    </link>
-
-        <!-- Fixed Joint for Jacobian -->
+    <!-- Fixed Joint for Jacobian -->
         <link name="RLHAA_point"/>
 
         <joint name="RLHAA_point_fixed" type="fixed">
-            <parent link="torso_back_link"/>
+            <parent link="torso_front_link"/>
             <child  link="RLHAA_point"/>
-            <origin xyz="-0.2 0.15 0" rpy="3.14159 0 0"/>   <!-- HAA 원점과 동일 -->
+            <origin xyz="-0.2 0.15 0" rpy="0 0 0"/>   <!-- HAA 원점과 동일 -->
         </joint>
 
     <joint name="RLHAA" type="revolute">
-        <parent link="torso_back_link"/>
+        <parent link="torso_front_link"/>
         <child link="RLHAA_link"/>
-        <origin xyz="-0.2 0.15 0" rpy="0 1.5708 0"/>
-        <axis xyz="0 0 1"/>
+        <origin xyz="-0.2 0.15 0" rpy="0 0 0"/>
+        <axis xyz="1 0 0"/>
         <limit lower="-0.8727" upper="0.8727" effort="60" velocity="10"/>
         </joint>
     <link name="RLHAA_link">
@@ -238,7 +215,7 @@
     <joint name="RLHIP" type="revolute">
         <parent link="RLHAA_link"/>
         <child link="RLHIP_link"/>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 0 0" rpy="0 1.5708 0"/>
         <axis xyz="0 -1 0"/>
         <limit lower="0" upper="3.14159" effort="60" velocity="10"/>
         </joint>
@@ -263,7 +240,7 @@
     <joint name="RL_foot_joint" type="fixed">
         <parent link="RLKNEE_link"/>
         <child link="RL_foot"/>
-        <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+        <origin xyz="0 0 -0.25" rpy="3.14159 0 0"/>
     </joint>
     <link name="RL_foot"> <visual> <geometry> <sphere radius="0.01"/> </geometry> <material name="foot_site_color"/> </visual> </link>
 
@@ -272,16 +249,16 @@
         <link name="RRHAA_point"/>
 
         <joint name="RRHAA_point_fixed" type="fixed">
-            <parent link="torso_back_link"/>
+            <parent link="torso_front_link"/>
             <child  link="RRHAA_point"/>
-            <origin xyz="-0.2 -0.15 0" rpy="3.14159 0 0"/>   <!-- HAA 원점과 동일 -->
+            <origin xyz="-0.2 -0.15 0" rpy="0 0 0"/>   <!-- HAA 원점과 동일 -->
         </joint>
 
     <joint name="RRHAA" type="revolute">
-        <parent link="torso_back_link"/>
+        <parent link="torso_front_link"/>
         <child link="RRHAA_link"/>
-        <origin xyz="-0.2 -0.15 0" rpy="0 1.5708 0"/>
-        <axis xyz="0 0 1"/>
+        <origin xyz="-0.2 -0.15 0" rpy="0 0 0"/>
+        <axis xyz="1 0 0"/>
         <limit lower="-0.8727" upper="0.8727" effort="60" velocity="10"/>
         </joint>
     <link name="RRHAA_link">
@@ -291,7 +268,7 @@
     <joint name="RRHIP" type="revolute">
         <parent link="RRHAA_link"/>
         <child link="RRHIP_link"/>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <origin xyz="0 0 0" rpy="0 1.5708 0"/>
         <axis xyz="0 -1 0"/>
         <limit lower="0" upper="3.14159" effort="60" velocity="10"/>
         </joint>
@@ -316,7 +293,7 @@
     <joint name="RR_foot_joint" type="fixed">
         <parent link="RRKNEE_link"/>
         <child link="RR_foot"/>
-        <origin xyz="0 0 -0.25" rpy="0 0 0"/>
+        <origin xyz="0 0 -0.25" rpy="3.14159 0 0"/>
     </joint>
     <link name="RR_foot"> <visual> <geometry> <sphere radius="0.01"/> </geometry> <material name="foot_site_color"/> </visual> </link>
 
