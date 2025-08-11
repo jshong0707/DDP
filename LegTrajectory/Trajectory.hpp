@@ -11,7 +11,7 @@ class robot_parameter;
 class Trajectory {
 public:
 
-    Trajectory(robot_parameter &pino, Body &B_);
+    Trajectory(std::shared_ptr<robot_parameter> pino, Body &B_);
     ~Trajectory();
 
     VectorXd custom_leg_traj(double t);

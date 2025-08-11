@@ -11,7 +11,7 @@ class filter;
 
 class Body {
 public:
-  Body(robot_parameter &pino);
+  Body(std::shared_ptr<robot_parameter> pino);
   ~Body();
 
   void sensor_measure(const mjModel* m, mjData* d);

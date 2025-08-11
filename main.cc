@@ -32,7 +32,7 @@
 #include <string>
 #include <thread>
 
-#include <dataLogging.hpp>
+// #include <dataLogging.hpp>
 #include "Body.hpp"
 #include "Trajectory.hpp"
 #include "FSM.hpp"
@@ -40,13 +40,14 @@
 #include "Controller.hpp"
 #include "Actuator.hpp"
 #include "filter.hpp"
-#include "Integrate.hpp"
+// #include "Integrate.hpp"
 #include "robot_parameter.hpp"
 #include "globals.hpp"
 #include "F_Kinematics.hpp"
 #include "B_Kinematics.hpp"
-
-
+#include "ModelBuilder.hpp"
+#include "CostBuilder.hpp"
+#include "DDPSolver.hpp"
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
 
@@ -81,7 +82,6 @@ mjtNum* ctrlnoise = nullptr;
 
 using Seconds = std::chrono::duration<double>;
 
-controlparams CP;
 
 char filename[] = "../Quadxml/3D_Quad.xml";
 
@@ -101,9 +101,11 @@ Actuator RLKNEE(8);
 
 Actuator RRHAA(9);
 Actuator RRHIP(10);
-Actuator RRKNEE(11);
+Actuator RRKNEE(11); 
 
-robot_parameter pino;
+auto pino  = std::make_shared<robot_parameter>();
+
+// robot_parameter pino;
 
 F_Kinematics K_FL(FLHAA, FLHIP, FLKNEE);
 F_Kinematics K_FR(FRHAA, FRHIP, FRKNEE);
@@ -116,14 +118,18 @@ Trajectory Traj(pino, B);
 
 FSM FSM_(Traj);
 
-MPC M(B, FSM_);
+// MPC M(B, FSM_);
 
-Controller C;
+// Controller C;
 
-Integrate I(pino, Traj, B, M, C, FSM_);
 
-dataLogging Logging;
+// dataLogging Logging;
 
+auto modelbuilder_ = std::make_shared<ModelBuilder>((pino));
+auto costbuilder_ = std::make_shared<CostBuilder>(modelbuilder_);
+auto ddpsolver_ = std::make_shared<DDPSolver>(costbuilder_); 
+
+// Integrate I(pino, Traj, B, M, C, FSM_);
 
 
 int world_cnt = 0;
@@ -131,7 +137,9 @@ int loop_index = 0;
 
 void initiate()
 {
-  Logging.initiate();
+  // Logging.initiate();
+  
+  
 }
 
 
@@ -146,7 +154,8 @@ world_cnt++;
 
 if(t < 0.0001)
     {
-      
+        
+
         // cout << "w x: " << d->subtree_com[0] << "  w y: " << d->subtree_com[1] << "  w z: " << d->subtree_com[2] << endl;
         d->qpos[0] = 0;
         d->qpos[1] = 0;      
@@ -174,11 +183,13 @@ if(t < 0.0001)
   {
     t = d->time;
 
-      I.sensor_measure(m, d);
+      // I.sensor_measure(m, d);
+      
+      // costbuilder_->get_costfunction();
 
-      I.get_error(t);
-
-      I.Leg_controller();
+      // I.get_error(t);
+      
+      // I.Leg_controller();
 
       // I.For_data_Log();
       // K_FL.sensor_measure(m,d);
@@ -187,33 +198,33 @@ if(t < 0.0001)
       
       
 
-      d->ctrl[0] = I.get_FL_J_input()[0]; // FLHAA
-      d->ctrl[1] = I.get_FL_J_input()[1]; // + I.get_FL_J_input()[2]; // FLHIP
-      d->ctrl[2] = I.get_FL_J_input()[2]; // FLKNEE
+      // d->ctrl[0] = I.get_FL_J_input()[0]; // FLHAA
+      // d->ctrl[1] = I.get_FL_J_input()[1]; // + I.get_FL_J_input()[2]; // FLHIP
+      // d->ctrl[2] = I.get_FL_J_input()[2]; // FLKNEE
 
-      d->ctrl[3] = I.get_FR_J_input()[0]; // FRHAA
-      d->ctrl[4] = I.get_FR_J_input()[1]; // + I.get_FR_J_input()[2]; // FRHIP
-      d->ctrl[5] = I.get_FR_J_input()[2];  // FRKNEE
+      // d->ctrl[3] = I.get_FR_J_input()[0]; // FRHAA
+      // d->ctrl[4] = I.get_FR_J_input()[1]; // + I.get_FR_J_input()[2]; // FRHIP
+      // d->ctrl[5] = I.get_FR_J_input()[2];  // FRKNEE
 
-      d->ctrl[6] = I.get_RL_J_input()[0]; // RLHAA
-      d->ctrl[7] = I.get_RL_J_input()[1]; // + I.get_RL_J_input()[3]; // RLHIP
-      d->ctrl[8] = I.get_RL_J_input()[2]; // RLKNEE
+      // d->ctrl[6] = I.get_RL_J_input()[0]; // RLHAA
+      // d->ctrl[7] = I.get_RL_J_input()[1]; // + I.get_RL_J_input()[3]; // RLHIP
+      // d->ctrl[8] = I.get_RL_J_input()[2]; // RLKNEE
 
-      d->ctrl[9] = I.get_RR_J_input()[0]; // RRHAA
-      d->ctrl[10] = I.get_RR_J_input()[1]; // + I.get_RR_J_input()[3]; // RRHIP
-      d->ctrl[11] = I.get_RR_J_input()[2]; // RRKNEE
+      // d->ctrl[9] = I.get_RR_J_input()[0]; // RRHAA
+      // d->ctrl[10] = I.get_RR_J_input()[1]; // + I.get_RR_J_input()[3]; // RRHIP
+      // d->ctrl[11] = I.get_RR_J_input()[2]; // RRKNEE
 
 
-      if (loop_index % 10 == 0) 
-      {     
-        Logging.cal_value(m, d, I);
-        Logging.save_data_leg(m, d, I, Logging.getFidFL(), 0);
-        Logging.save_data_leg(m, d, I, Logging.getFidFR(), 1);
-        Logging.save_data_leg(m, d, I, Logging.getFidRL(), 2);
-        Logging.save_data_leg(m, d, I, Logging.getFidRR(), 3);
-        Logging.save_data_Body(m, d, B, Logging.getFidBody());
-      }
-      loop_index += 1;
+      // if (loop_index % 10 == 0) 
+      // {     
+      //   Logging.cal_value(m, d, I);
+      //   Logging.save_data_leg(m, d, I, Logging.getFidFL(), 0);
+      //   Logging.save_data_leg(m, d, I, Logging.getFidFR(), 1);
+      //   Logging.save_data_leg(m, d, I, Logging.getFidRL(), 2);
+      //   Logging.save_data_leg(m, d, I, Logging.getFidRR(), 3);
+      //   Logging.save_data_Body(m, d, B, Logging.getFidBody());
+      // }
+      // loop_index += 1;
 
   }
 }

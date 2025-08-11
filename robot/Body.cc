@@ -4,7 +4,7 @@
 #include <cmath>
 
 struct Body::Impl {
-  robot_parameter &pino;
+  std::shared_ptr<robot_parameter> pino;
   Eigen::Matrix3d I;
   double          M;
   int             N_Task;
@@ -31,8 +31,8 @@ struct Body::Impl {
   double MPC_dt;
   double dt;
 
-  Impl(robot_parameter &p)
-    : pino(p),
+  Impl(std::shared_ptr<robot_parameter> p)
+    : pino(std::move(p)),
       I(Eigen::Matrix3d::Zero()),
       M(17.0),
       N_Task(1),
@@ -76,7 +76,7 @@ struct Body::Impl {
           d->qpos[0], d->qpos[1], d->qpos[2],
           omega_IMU[0], omega_IMU[1], omega_IMU[2],
           d->qvel[0], d->qvel[1], d->qvel[2];
-
+    
   }
 
   
@@ -88,7 +88,6 @@ struct Body::Impl {
                 d->site_xpos[3*i+5] - CoM_pos_W[2];
     }
 
-    cout << "mujoco\n" << r_W[0] << endl;
   }
 
   Eigen::VectorXd get_x_ref(double t) {
@@ -187,8 +186,8 @@ struct Body::Impl {
 };
 
 // Body public API 위임
-Body::Body(robot_parameter &pino)
-  : pimpl_(std::make_unique<Impl>(pino)) {}
+Body::Body(std::shared_ptr<robot_parameter> pino)
+  : pimpl_(std::make_unique<Impl>(std::move(pino))) {}
 
 Body::~Body() = default;
 

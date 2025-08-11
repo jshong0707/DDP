@@ -9,9 +9,9 @@
 
 // Impl 정의 및 구현
 struct Trajectory::Impl {
-    // 내부 BezierCurve 인스턴스
+
     std::unique_ptr<BezierCurve> Bezier;
-    robot_parameter &pino;
+    std::shared_ptr<robot_parameter> pino;
     Body &B_;
 
     Eigen::VectorXd pos_ref;
@@ -30,8 +30,8 @@ struct Trajectory::Impl {
     double w;
 
     // Impl 생성자에서 초기화
-    Impl(robot_parameter &p, Body &b)
-      : Bezier(std::make_unique<BezierCurve>()), pino(p), B_(b), t_norm(0),
+    Impl(std::shared_ptr<robot_parameter> p, Body &b)
+      : Bezier(std::make_unique<BezierCurve>()), pino(std::move(p)), B_(b), t_norm(0),
         pdot_ref(Eigen::Vector3d::Zero()), pdot(Eigen::Vector3d::Zero()), thdot(Eigen::Vector3d::Zero()),
         is_contact{true,true,true,true}, old_contact{true,true,true,true} 
         {
@@ -112,7 +112,7 @@ struct Trajectory::Impl {
     }
 
     Eigen::Vector3d get_foot_pos(int Leg_num) {
-        return pino.get_leg_pos(Leg_num);
+        return pino->get_leg_pos(Leg_num);
     }
 
     std::vector<bool> FSM() const {
@@ -121,8 +121,8 @@ struct Trajectory::Impl {
 };
 
 // Trajectory public 메서드 위임
-Trajectory::Trajectory(robot_parameter &p, Body &b)
-  : pimpl_(std::make_unique<Impl>(p, b)) {}
+Trajectory::Trajectory(std::shared_ptr<robot_parameter> p, Body &b)
+  : pimpl_(std::make_unique<Impl>(std::move(p), b)) {}
 
 Trajectory::~Trajectory() = default;
 

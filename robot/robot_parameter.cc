@@ -11,79 +11,85 @@
 
 #include <iostream>
 
-// Impl 정의 및 구현
 struct robot_parameter::Impl
 {
-  // Pinocchio 모델 & 데이터
-  pinocchio::Model model_;
-  pinocchio::Data  data_;
+    std::shared_ptr<pinocchio::Model> model_;
+    std::shared_ptr<pinocchio::Data>  data_;
 
-  // URDF 에 정의된 프레임 이름
-  const std::string imu_frame = "imu_link";
+    const std::string imu_frame = "imu_link";
 
-  // 각 다리별 HAA 지점부터 foot 지점까지의 링크 이름
-  const std::array<std::array<std::string,4>,4> legs = {{
-    { "FLHAA_point", "FLHIP",  "FLKNEE",  "FL_foot" },
-    { "FRHAA_point", "FRHIP",  "FRKNEE",  "FR_foot" },
-    { "RLHAA_point", "RLHIP",  "RLKNEE",  "RL_foot" },
-    { "RRHAA_point", "RRHIP",  "RRKNEE",  "RR_foot" }
-  }};
+    const std::array<std::array<std::string,4>,4> legs = {{
+      { "FLHAA_point", "FLHIP",  "FLKNEE",  "FL_foot" },
+      { "FRHAA_point", "FRHIP",  "FRKNEE",  "FR_foot" },
+      { "RLHAA_point", "RLHIP",  "RLKNEE",  "RL_foot" },
+      { "RRHAA_point", "RRHIP",  "RRKNEE",  "RR_foot" }
+    }};
 
-  // 계산된 결과 저장
-  std::array<Eigen::Vector3d,4> leg_pos;    // HAA→foot 위치
-  std::array<Eigen::Matrix3d,4> J_B;        // Body 프레임 자코비안
-  std::array<Eigen::Vector3d,4> foot_vector;
-  Eigen::Matrix3d              R_BW;       // Body→World 회전
-  Eigen::Vector3d              rpy;        // yaw‑pitch‑roll
-  Eigen::Quaterniond quat;
-  Impl()
-  {
-    constexpr char URDF[] = "../urdf/3D_Quad.urdf";
+    const std::vector<std::string> foot_frames = 
+    {legs[0][3], legs[1][3], legs[2][3], legs[3][3]};
+
+    std::array<Eigen::Vector3d,4> leg_pos;    // HAA→foot 위치
+    std::array<Eigen::Matrix3d,4> J_B;        // Body 프레임 자코비안
+    std::array<Eigen::Vector3d,4> foot_vector;
+    Eigen::Matrix3d              R_BW;       // Body→World 회전
+    Eigen::Vector3d              rpy;        // yaw‑pitch‑roll
+    Eigen::Quaterniond quat;
     
-    pinocchio::urdf::buildModel(URDF, model_);
-    data_ = pinocchio::Data(model_);
+    Impl()
+    {
+      constexpr char URDF[] = "../urdf/3D_Quad.urdf";
+      
+      model_ = std::make_shared<pinocchio::Model>();
+      pinocchio::urdf::buildModel(URDF, *model_);
 
-    std::cout << "Pinocchio model loaded successfully!\n"
-              << ", nq = "    << model_.nq    << "\n";
-  }
+      data_ = std::make_shared<pinocchio::Data>(*model_);
 
+      std::cout << "Pinocchio model loaded successfully!\n"
+                << ", nq = "    << model_->nq    << "\n";
+    }
+
+    pinocchio::Model& getModel();
+    pinocchio::Data&  getData();
+    
+  // pinocchio::Model& getModel() { return model_; }
+  // pinocchio::Data&  getData()  { return data_;  }
+  
   void robot_param(const Eigen::VectorXd &q,
                    const Eigen::VectorXd &qd,
                    const Eigen::VectorXd &qdd)
   {
     using namespace pinocchio;
 
-    forwardKinematics(model_, data_, q, qd);
-    computeJointJacobians(model_, data_, q);
-    updateFramePlacements(model_, data_);
+    forwardKinematics(*model_, *data_, q, qd);
+    computeJointJacobians(*model_, *data_, q);
+    updateFramePlacements(*model_, *data_);
 
-    const auto &oMf_imu = data_.oMf[model_.getFrameId(imu_frame)];
+    const auto &oMf_imu = data_->oMf[model_->getFrameId(imu_frame)];
     R_BW = oMf_imu.rotation();
-
+    
+    
     // cout << "pino\n"<< R_BW << endl;
-    // cout << "mujoco\n" << quat.toRotationMatrix() << endl;    
+    // cout << "mujoco\n" << quat.toRotationMatrix() << endl;
 
     // 각 다리별 HAA→foot 위치와 Body 프레임 자코비안 계산  
     for(int i = 0; i < 4; ++i)
     {
       // HAA→foot 변환
-      const auto &oMf_HAA  = data_.oMf[model_.getFrameId(legs[i][0])];
-      const auto &oMf_foot = data_.oMf[model_.getFrameId(legs[i][3])];
+      const auto &oMf_HAA  = data_->oMf[ model_->getFrameId(legs[i][0]) ];
+      const auto &oMf_foot = data_->oMf[ model_->getFrameId(legs[i][3]) ];
       auto T_HAA2foot = oMf_HAA.inverse() * oMf_foot;
       auto T_imu2foot = oMf_imu.inverse() * oMf_foot;
 
       leg_pos[i] = T_HAA2foot.translation();
       foot_vector[i] = T_imu2foot.translation();
 
-      cout << "pino\n" << foot_vector[0] << endl;
       // cout << i << ": " << leg_pos[i][0] << ": " << leg_pos[i][1] << ": " << leg_pos[i][2] << endl;
 
-
       // World‑aligned 자코비안 → Body 프레임
-      Eigen::MatrixXd J6(6, model_.nv);
+      Eigen::MatrixXd J6(6, model_->nv);
       getFrameJacobian(
-        model_, data_,
-        model_.getFrameId(legs[i][3]),
+        *model_, *data_,
+        model_->getFrameId(legs[i][3]),
         LOCAL_WORLD_ALIGNED,
         J6
       );
@@ -99,15 +105,15 @@ struct robot_parameter::Impl
       // Pinocchio 기본 [roll,pitch,yaw]를 [yaw,‑pitch,‑roll]로 조정
       // rpy = { ypr[2], -ypr[1], -ypr[0] };
       rpy = { ypr[0], ypr[1], ypr[2] };
-
     }
+    
   }
 
-  // 접근자들
   Eigen::Vector3d get_leg_pos(int i) const { return leg_pos[i]; }
   Eigen::Matrix3d get_Jacb   (int i) const { return J_B[i];   }
   Eigen::Vector3d get_rpy    ()    const { return rpy;      }
   Eigen::Matrix3d get_R      ()    const { return R_BW;     }
+  std::vector<std::string> get_foot_frame () const {return foot_frames;}
 };
 
 // robot_parameter: public → Impl 위임
@@ -117,6 +123,7 @@ robot_parameter::robot_parameter()
 {}
 
 robot_parameter::~robot_parameter() = default;
+
 
 void robot_parameter::robot_param(const Eigen::VectorXd &q,
                                  const Eigen::VectorXd &qd,
@@ -141,5 +148,14 @@ Eigen::Matrix3d robot_parameter::get_R() const {
   return pimpl_->get_R();
 }
 
-void robot_parameter::get_quat(Eigen::Quaterniond mujoco_quat)
- {pimpl_->quat = mujoco_quat;}
+std::vector<std::string> robot_parameter::get_foot_frame() const {
+  return pimpl_->get_foot_frame();
+}
+
+
+std::shared_ptr<pinocchio::Model> robot_parameter::getModel() const {
+  return pimpl_->model_; }
+
+std::shared_ptr<pinocchio::Data> robot_parameter::getData() const {
+  return pimpl_->data_; }
+

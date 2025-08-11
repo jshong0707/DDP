@@ -1,0 +1,31 @@
+#pragma once
+
+#include "globals.hpp"
+#include <memory>
+#include <Eigen/Dense>
+#include <vector>
+#include <array>
+#include <crocoddyl/core/fwd.hpp>
+#include <crocoddyl/multibody/fwd.hpp>
+
+class robot_parameter;
+
+
+
+class ModelBuilder
+{
+public:
+    ModelBuilder(std::shared_ptr<robot_parameter> pino);
+    ~ModelBuilder();
+    
+    void test();
+    shared_ptr<crocoddyl::StateMultibody> get_state();
+    shared_ptr<crocoddyl::ActuationModelFloatingBase> get_act();
+    const double get_nu();
+
+private:
+    struct Impl;
+    std::unique_ptr<Impl> pimpl_;
+    
+};
+

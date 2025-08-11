@@ -16,10 +16,10 @@ class FSM;
 class Integrate
 {
 public:
-  Integrate(robot_parameter &pino,
+  Integrate(std::shared_ptr<robot_parameter> p,
             Trajectory      &Traj,
             Body            &B,
-            MPC             &M,
+            // MPC             &M,
             Controller      &C,
             FSM             &FSM_);
   ~Integrate();

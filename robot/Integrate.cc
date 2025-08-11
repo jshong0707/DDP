@@ -2,16 +2,16 @@
 #include "robot_parameter.hpp"
 #include "Trajectory.hpp"
 #include "Body.hpp"
-#include "MPC.hpp"
+#include "DDPSolver.hpp"
 #include "Controller.hpp"
 #include "FSM.hpp"
 #include <array>
 
 struct Integrate::Impl {
-  robot_parameter &pino;
+  std::shared_ptr<robot_parameter> pino;
   Trajectory      &Traj;
   Body            &B;
-  MPC             &M;
+//   MPC             &M;
   Controller      &C;
   FSM             &FSM_;
 
@@ -33,16 +33,16 @@ struct Integrate::Impl {
   Eigen::Vector3d pos_err[4], pos_err_old[4];
   std::vector<bool> is_contact;
 
-  Impl(robot_parameter &p,
+  Impl(std::shared_ptr<robot_parameter> p,
        Trajectory      &t_,
        Body            &b,
-       MPC             &m,
+    //    MPC             &m,
        Controller      &c,
        FSM             &f)
-    : pino(p),
+    : pino(std::move(p)),
       Traj(t_),
       B(b),
-      M(m),
+    //   M(m),
       C(c),
       FSM_(f),
       q(Eigen::VectorXd::Zero(19)),
@@ -54,7 +54,7 @@ struct Integrate::Impl {
       is_contact(4, false)
   {
     // Initialize
-    mpc_dt = M.get_dt();
+    // mpc_dt = M.get_dt();
 
     for(int i=0;i<4;i++){
       FB_input[i].setZero();
@@ -66,13 +66,14 @@ struct Integrate::Impl {
   }
 };
 
-Integrate::Integrate(robot_parameter &pino,
+Integrate::Integrate(std::shared_ptr<robot_parameter> p,
                      Trajectory      &Traj,
                      Body            &B,
-                     MPC             &M,
+                    //  MPC             &M,
                      Controller      &C,
                      FSM             &FSM_)
-  : pimpl_(std::make_unique<Impl>(pino, Traj, B, M, C, FSM_))
+  : pimpl_(std::make_unique<Impl>(std::move(p), Traj, B, C, FSM_))
+//   : pimpl_(std::make_unique<Impl>(std::move(p), Traj, B, M, C, FSM_))
 {}
 
 Integrate::~Integrate() = default;
@@ -89,9 +90,9 @@ void Integrate::sensor_measure(const mjModel* m, mjData* d) {
   for(int k=0;k<18;k++) p.qd[k] = d->qvel[k];
   for(int k=0;k<18;k++) p.qdd[k] = d->qacc[k];
 
-  p.pino.robot_param(p.q, p.qd, p.qdd);
+  p.pino->robot_param(p.q, p.qd, p.qdd);
   p.B.sensor_measure(m, d);
-  p.M.foot_vector(m, d);
+//   p.M.foot_vector(m, d);
 }
 
 void Integrate::get_error(double /*unused*/) {
@@ -100,7 +101,7 @@ void Integrate::get_error(double /*unused*/) {
   for(int k=0;k<4;k++) i.pos_err_old[k] = i.pos_err[k];
   for(int k=0;k<4;k++){
     i.pos_err[k] = i.leg_pos_ref.segment<3>(3*k)
-                 - i.pino.get_leg_pos(k);
+                 - i.pino->get_leg_pos(k);
 
                 //  cout << k << "\n" << i.pino.get_leg_pos(k) << endl;
   }
@@ -117,27 +118,27 @@ void Integrate::Leg_controller() {
       i.FB_input[k] = Eigen::Vector3d::Zero();
   }
 
-  if(i.t >= i.optimization_t) {
-    i.M.Dynamics();
-    i.M.SolveQP();
-    i.opt_u = i.M.get_opt_u();
+//   if(i.t >= i.optimization_t) {
+//     i.M.Dynamics();
+//     i.M.SolveQP();
+//     i.opt_u = i.M.get_opt_u();
 
-    if(i.t < 1e-8) i.opt_u.setZero();
-      for(int k=0;k<4;k++){
-          i.opt_u[3*k] = -i.opt_u[3*k];
-          i.opt_u[3*k + 1] = -i.opt_u[3*k + 1];
-          i.opt_u[3*k + 2] = -i.opt_u[3*k + 2];
+//     if(i.t < 1e-8) i.opt_u.setZero();
+//       for(int k=0;k<4;k++){
+//           i.opt_u[3*k] = -i.opt_u[3*k];
+//           i.opt_u[3*k + 1] = -i.opt_u[3*k + 1];
+//           i.opt_u[3*k + 2] = -i.opt_u[3*k + 2];
 
-        i.opt_GRF[k] = i.B.get_R().transpose()
-                      * (i.opt_u.segment<3>(3*k));
-      }
-      i.optimization_t += i.mpc_dt;
-    }
+//         i.opt_GRF[k] = i.B.get_R().transpose()
+//                       * (i.opt_u.segment<3>(3*k));
+//       }
+//       i.optimization_t += i.mpc_dt;
+//     }
 
-  i.F_Joint_input[0] = i.pino.get_Jacb(0).transpose() * (i.opt_GRF[0] + i.FB_input[0]);
-  i.F_Joint_input[1] = i.pino.get_Jacb(1).transpose() * (i.opt_GRF[1] + i.FB_input[1]);
-  i.B_Joint_input[0] = i.pino.get_Jacb(2).transpose() * (i.opt_GRF[2] + i.FB_input[2]);
-  i.B_Joint_input[1] = i.pino.get_Jacb(3).transpose() * (i.opt_GRF[3] + i.FB_input[3]);
+  i.F_Joint_input[0] = i.pino->get_Jacb(0).transpose() * (i.opt_GRF[0] + i.FB_input[0]);
+  i.F_Joint_input[1] = i.pino->get_Jacb(1).transpose() * (i.opt_GRF[1] + i.FB_input[1]);
+  i.B_Joint_input[0] = i.pino->get_Jacb(2).transpose() * (i.opt_GRF[2] + i.FB_input[2]);
+  i.B_Joint_input[1] = i.pino->get_Jacb(3).transpose() * (i.opt_GRF[3] + i.FB_input[3]);
 
   // cout << "Jacobian \n" << i.pino.get_Jacb(0).transpose() << endl;
 
@@ -148,7 +149,7 @@ void Integrate::Data_log() {
 
   for(int k=0;k<4;k++){
     i.leg_pos.segment<3>(3*k)
-      = i.pino.get_leg_pos(k);
+      = i.pino->get_leg_pos(k);
   }
 }
 
