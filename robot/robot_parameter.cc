@@ -46,6 +46,7 @@ struct robot_parameter::Impl
 
       std::cout << "Pinocchio model loaded successfully!\n"
                 << ", nq = "    << model_->nq    << "\n";
+
     }
 
     pinocchio::Model& getModel();

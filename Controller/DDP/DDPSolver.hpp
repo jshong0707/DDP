@@ -5,14 +5,16 @@
 #include <array>
 #include <Eigen/Dense>
 
+class ModelBuilder;
 class CostBuilder;
 
 class DDPSolver
 {
 
 public:
-    DDPSolver(std::shared_ptr<CostBuilder> CostBuilder);
+    DDPSolver(shared_ptr<ModelBuilder> ModelBuilder, shared_ptr<CostBuilder> CostBuilder);
     ~DDPSolver();
+    void solve();
 
 private:
     struct Impl;

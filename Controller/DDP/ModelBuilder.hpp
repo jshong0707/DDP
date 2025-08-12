@@ -21,6 +21,7 @@ public:
     void test();
     shared_ptr<crocoddyl::StateMultibody> get_state();
     shared_ptr<crocoddyl::ActuationModelFloatingBase> get_act();
+    shared_ptr<crocoddyl::ContactModelMultiple> get_contact_model();
     const double get_nu();
 
 private:

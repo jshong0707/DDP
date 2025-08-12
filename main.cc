@@ -36,11 +36,10 @@
 #include "Body.hpp"
 #include "Trajectory.hpp"
 #include "FSM.hpp"
-#include "MPC.hpp"
 #include "Controller.hpp"
 #include "Actuator.hpp"
 #include "filter.hpp"
-// #include "Integrate.hpp"
+#include "Integrate.hpp"
 #include "robot_parameter.hpp"
 #include "globals.hpp"
 #include "F_Kinematics.hpp"
@@ -120,16 +119,16 @@ FSM FSM_(Traj);
 
 // MPC M(B, FSM_);
 
-// Controller C;
+Controller C;
 
 
 // dataLogging Logging;
 
 auto modelbuilder_ = std::make_shared<ModelBuilder>((pino));
 auto costbuilder_ = std::make_shared<CostBuilder>(modelbuilder_);
-auto ddpsolver_ = std::make_shared<DDPSolver>(costbuilder_); 
+auto ddpsolver_ = std::make_shared<DDPSolver>(modelbuilder_, costbuilder_); 
 
-// Integrate I(pino, Traj, B, M, C, FSM_);
+Integrate I(pino, Traj, B, C, FSM_);
 
 
 int world_cnt = 0;
@@ -138,7 +137,6 @@ int loop_index = 0;
 void initiate()
 {
   // Logging.initiate();
-  
   
 }
 
@@ -183,10 +181,10 @@ if(t < 0.0001)
   {
     t = d->time;
 
-      // I.sensor_measure(m, d);
+      I.sensor_measure(m, d);
       
       // costbuilder_->get_costfunction();
-
+      ddpsolver_->solve();
       // I.get_error(t);
       
       // I.Leg_controller();

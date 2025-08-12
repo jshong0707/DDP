@@ -18,7 +18,7 @@
 	<!-- 기준 -->
     <link name="root"/>
 
-    <joint name="world_to_torso_front_joint" type="floating">  <!--type="floating"-->
+    <joint name="root_joint" type="floating">  <!--type="floating"-->
         <parent link="root"/>
         <child link="torso_front_link"/>
         <origin xyz="0 0 0.375" rpy="0 0 0"/> </joint>

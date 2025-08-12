@@ -92,6 +92,7 @@ void Integrate::sensor_measure(const mjModel* m, mjData* d) {
 
   p.pino->robot_param(p.q, p.qd, p.qdd);
   p.B.sensor_measure(m, d);
+
 //   p.M.foot_vector(m, d);
 }
 

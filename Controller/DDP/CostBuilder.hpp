@@ -13,13 +13,13 @@ class CostBuilder
 {
 
 public:
-    CostBuilder(std::shared_ptr<ModelBuilder> ModelBuilder_);
+    CostBuilder(shared_ptr<ModelBuilder> ModelBuilder_);
     ~CostBuilder();
     
-    std::shared_ptr<crocoddyl::CostModelSum> get_costfunction();
+    shared_ptr<crocoddyl::CostModelSum> get_costfunction();
 
 
 private:
     struct Impl;
-    std::unique_ptr<Impl> pimpl_;
+    unique_ptr<Impl> pimpl_;
 };

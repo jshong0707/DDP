@@ -91,9 +91,7 @@ struct Controller::Impl {
 Controller::Controller()
   : pimpl_(std::make_unique<Impl>())
 {
-    // 필터 할당 등 필요 시 초기화
     pimpl_->Filter = new filter();
-    // Contact 포인터 설정 등
 }
 
 Controller::~Controller()

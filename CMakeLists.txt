@@ -56,8 +56,6 @@ file(GLOB_RECURSE SOURCES
 "F_Kinematics.cc"
 "B_Kinematics.cc"
 "Body.cc" 
-"MPC.cc" 
-"MPC_util.cc"
 "dataLogging.cc" 
 "FSM.cc" 
 "robot_parameter.cc" 
