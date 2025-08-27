@@ -17,7 +17,7 @@ public:
     ~CostBuilder();
     
     shared_ptr<crocoddyl::CostModelSum> get_costfunction();
-
+    void get_t(double t);
 
 private:
     struct Impl;

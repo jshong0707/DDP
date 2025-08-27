@@ -13,28 +13,31 @@
 
 struct robot_parameter::Impl
 {
-    std::shared_ptr<pinocchio::Model> model_;
-    std::shared_ptr<pinocchio::Data>  data_;
+    shared_ptr<pinocchio::Model> model_;
+    shared_ptr<pinocchio::Data>  data_;
 
-    const std::string imu_frame = "imu_link";
+    const string imu_frame = "imu_link";
 
-    const std::array<std::array<std::string,4>,4> legs = {{
+    const std::array<std::array<string,4>,4> legs = {{
       { "FLHAA_point", "FLHIP",  "FLKNEE",  "FL_foot" },
       { "FRHAA_point", "FRHIP",  "FRKNEE",  "FR_foot" },
       { "RLHAA_point", "RLHIP",  "RLKNEE",  "RL_foot" },
       { "RRHAA_point", "RRHIP",  "RRKNEE",  "RR_foot" }
     }};
 
-    const std::vector<std::string> foot_frames = 
+    const vector<string> foot_frames = 
     {legs[0][3], legs[1][3], legs[2][3], legs[3][3]};
 
-    std::array<Eigen::Vector3d,4> leg_pos;    // HAA→foot 위치
-    std::array<Eigen::Matrix3d,4> J_B;        // Body 프레임 자코비안
-    std::array<Eigen::Vector3d,4> foot_vector;
-    Eigen::Matrix3d              R_BW;       // Body→World 회전
-    Eigen::Vector3d              rpy;        // yaw‑pitch‑roll
-    Eigen::Quaterniond quat;
+    std::array<Vector3d,4> leg_pos;    // HAA→foot 위치
+    std::array<Matrix3d,4> J_B;        // Body 프레임 자코비안
+    std::array<Vector3d,4> foot_vector;
+    Matrix3d              R_BW;       // Body→World 회전
+    Vector3d              rpy;        // yaw‑pitch‑roll
+    Quaterniond quat;
+    VectorXd q;
+    VectorXd qd;
     
+
     Impl()
     {
       constexpr char URDF[] = "../urdf/3D_Quad.urdf";
@@ -49,18 +52,20 @@ struct robot_parameter::Impl
 
     }
 
-    pinocchio::Model& getModel();
-    pinocchio::Data&  getData();
     
   // pinocchio::Model& getModel() { return model_; }
   // pinocchio::Data&  getData()  { return data_;  }
   
-  void robot_param(const Eigen::VectorXd &q,
-                   const Eigen::VectorXd &qd,
-                   const Eigen::VectorXd &qdd)
+  void robot_param(const Eigen::VectorXd &pos,
+                   const Eigen::VectorXd &vel,
+                   const Eigen::VectorXd &acc)
   {
     using namespace pinocchio;
 
+    q = pos;
+    qd = vel;
+
+    pinocchio::normalize(*model_, q);
     forwardKinematics(*model_, *data_, q, qd);
     computeJointJacobians(*model_, *data_, q);
     updateFramePlacements(*model_, *data_);
@@ -115,6 +120,7 @@ struct robot_parameter::Impl
   Eigen::Vector3d get_rpy    ()    const { return rpy;      }
   Eigen::Matrix3d get_R      ()    const { return R_BW;     }
   std::vector<std::string> get_foot_frame () const {return foot_frames;}
+
 };
 
 // robot_parameter: public → Impl 위임
@@ -126,37 +132,30 @@ robot_parameter::robot_parameter()
 robot_parameter::~robot_parameter() = default;
 
 
-void robot_parameter::robot_param(const Eigen::VectorXd &q,
-                                 const Eigen::VectorXd &qd,
-                                 const Eigen::VectorXd &qdd)
+void robot_parameter::robot_param(const Eigen::VectorXd &pos,
+                                 const Eigen::VectorXd &vel,
+                                 const Eigen::VectorXd &acc)
 {
-  pimpl_->robot_param(q, qd, qdd);
+  pimpl_->robot_param(pos, vel, acc);
 }
 
-Eigen::Vector3d robot_parameter::get_leg_pos(int i) const {
-  return pimpl_->get_leg_pos(i);
-}
+Eigen::Vector3d robot_parameter::get_leg_pos(int i) const {return pimpl_->get_leg_pos(i);}
 
-Eigen::Matrix3d robot_parameter::get_Jacb(int i) const {
-  return pimpl_->get_Jacb(i);
-}
+Eigen::Matrix3d robot_parameter::get_Jacb(int i) const {return pimpl_->get_Jacb(i);}
 
-Eigen::Vector3d robot_parameter::get_rpy() const {
-  return pimpl_->get_rpy();
-}
+Eigen::Vector3d robot_parameter::get_rpy() const {return pimpl_->get_rpy();}
 
-Eigen::Matrix3d robot_parameter::get_R() const {
-  return pimpl_->get_R();
-}
+Eigen::Matrix3d robot_parameter::get_R() const {return pimpl_->get_R();}
 
-std::vector<std::string> robot_parameter::get_foot_frame() const {
-  return pimpl_->get_foot_frame();
-}
+std::vector<std::string> robot_parameter::get_foot_frame() const {return pimpl_->get_foot_frame();}
 
 
-std::shared_ptr<pinocchio::Model> robot_parameter::getModel() const {
-  return pimpl_->model_; }
+std::shared_ptr<pinocchio::Model> robot_parameter::getModel() const {return pimpl_->model_; }
 
-std::shared_ptr<pinocchio::Data> robot_parameter::getData() const {
-  return pimpl_->data_; }
+std::shared_ptr<pinocchio::Data> robot_parameter::getData() const {return pimpl_->data_; }
 
+VectorXd robot_parameter::get_q() const {return pimpl_->q; }
+
+VectorXd robot_parameter::get_qd() const {return pimpl_->qd;}
+ 
+  

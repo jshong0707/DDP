@@ -4,7 +4,12 @@
 
 #include <crocoddyl/multibody/actuations/floating-base.hpp>
 #include <crocoddyl/multibody/contacts/multiple-contacts.hpp>
-
+#include <pinocchio/spatial/se3.hpp>
+#include <pinocchio/algorithm/kinematics.hpp>
+#include <pinocchio/algorithm/frames.hpp>
+#include <pinocchio/multibody/fwd.hpp> // pinocchio::LOCAL을 위해 추가됨
+#include <crocoddyl/multibody/contacts/contact-3d.hpp>
+// #include <crocoddyl/multibody/contacts/contact-6d.hpp>
 
 
 struct ModelBuilder::Impl {
@@ -17,6 +22,10 @@ struct ModelBuilder::Impl {
     shared_ptr<crocoddyl::ContactModelMultiple> contact_model_;
     double nu;
     
+    std::array<std::string,4> foot_frame_names = {
+      "FL_foot", "FR_foot", "RL_foot", "RR_foot"
+    };
+
     Impl(shared_ptr<robot_parameter> p)
       : pino(p),
         model_(p->getModel()),
@@ -29,13 +38,43 @@ struct ModelBuilder::Impl {
         nu = actuation_->get_nu();
         
         contact_model_ = make_shared<crocoddyl::ContactModelMultiple>(state_, actuation_->get_nu());
+
+        const auto rf = pinocchio::LOCAL_WORLD_ALIGNED;
+        const Eigen::Vector2d gains(80.0, 10.0);    // 예시 게인
+         Eigen::Vector3d p_ref = Eigen::Vector3d::Zero();  // 초기엔 0, 이후 q로 갱신 권장
+        p_ref[2] = -0.3536;
+              // 프레임 ID 체크 (존재 안 하면 -1 주의)
+        const pinocchio::FrameIndex fid_FL = model_->getFrameId(foot_frame_names[0]);
+        const pinocchio::FrameIndex fid_FR = model_->getFrameId(foot_frame_names[1]);
+        const pinocchio::FrameIndex fid_RL = model_->getFrameId(foot_frame_names[2]);
+        const pinocchio::FrameIndex fid_RR = model_->getFrameId(foot_frame_names[3]);
+
+        // 각 발 컨택트 사전등록 (active=false)
+          {auto c3 = std::make_shared<crocoddyl::ContactModel3D>(state_, fid_FL, p_ref, rf,
+                                                                (std::size_t)actuation_->get_nu(),
+                                                                gains);
+          contact_model_->addContact("FL_contact", c3, /*active=*/true);
+            c3->set_reference(p_ref);
+          }
+          {auto c3 = std::make_shared<crocoddyl::ContactModel3D>(state_, fid_FR, p_ref, rf,
+                                                                (std::size_t)actuation_->get_nu(),
+                                                                gains);
+          contact_model_->addContact("FR_contact", c3, /*active=*/true);
+          }
+          {auto c3 = std::make_shared<crocoddyl::ContactModel3D>(state_, fid_RL, p_ref, rf,
+                                                                (std::size_t)actuation_->get_nu(),
+                                                                gains);
+          contact_model_->addContact("RL_contact", c3, /*active=*/true);
+          }
+          {auto c3 = std::make_shared<crocoddyl::ContactModel3D>(state_, fid_RR, p_ref, rf,
+                                                                (std::size_t)actuation_->get_nu(),
+                                                                gains);
+          contact_model_->addContact("RR_contact", c3, /*active=*/true);
+          }
     }   
     
     
-    void test() {        
-            VectorXd x0 = Eigen::VectorXd::Zero(state_->get_nx());
-            
-        }
+
 
 };
 
@@ -45,8 +84,9 @@ ModelBuilder::ModelBuilder(shared_ptr<robot_parameter> p)
 
 ModelBuilder::~ModelBuilder() = default;
 
-void ModelBuilder::test() { pimpl_->test(); }
 shared_ptr<crocoddyl::StateMultibody> ModelBuilder::get_state() {return pimpl_->state_;}
 shared_ptr<crocoddyl::ActuationModelFloatingBase> ModelBuilder::get_act() {return pimpl_->actuation_;}
 shared_ptr<crocoddyl::ContactModelMultiple> ModelBuilder::get_contact_model() {return pimpl_->contact_model_;}
 const double ModelBuilder::get_nu() {return pimpl_->nu;}
+VectorXd ModelBuilder::get_q() const {return pimpl_->pino->get_q();}
+VectorXd ModelBuilder::get_qd() const {return pimpl_->pino->get_qd();}

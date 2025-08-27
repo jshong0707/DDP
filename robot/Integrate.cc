@@ -82,16 +82,34 @@ void Integrate::sensor_measure(const mjModel* m, mjData* d) {
   auto &p = *pimpl_;
   p.t = d->time;
   for(int k=0;k<19;k++) p.q[k] = d->qpos[k];
+
+  Eigen::Quaterniond qm(d->qpos[3], d->qpos[4], d->qpos[5], d->qpos[6]); // (w,x,y,z)
+  qm.normalize();
   // Match between urdf and mjcf
-    p.q[3] = d->qpos[4]; // x  
-    p.q[4] = d->qpos[5]; // y
-    p.q[5] = d->qpos[6]; // z
-    p.q[6] = d->qpos[3]; // w
-  for(int k=0;k<18;k++) p.qd[k] = d->qvel[k];
+    p.q[3] = qm.x(); // qx  
+    p.q[4] = qm.y(); // qy
+    p.q[5] = qm.z(); // qz
+    p.q[6] = qm.w(); // w
+
+
+  Vector3d vB, wB;
+    vB << d->sensordata[6], d->sensordata[7], d->sensordata[8]; // 앞 3개 선속
+    wB << d->sensordata[3], d->sensordata[4], d->sensordata[5]; // 뒤 3개 각속  
+  // (5) Pinocchio 일반화속도 v의 순서 = [linear; angular]
+
+  p.qd.setZero(18);
+  p.qd.head<3>()     = vB; // 앞 3개 선속
+  p.qd.segment<3>(3) = wB; // 뒤 3개 각속
+  for (int k = 6; k < 18; ++k) p.qd[k] = d->qvel[k]; // 나머지 조인트
+
+
+
+  
   for(int k=0;k<18;k++) p.qdd[k] = d->qacc[k];
 
+  // cout << "pinocchio\n" << p.q << endl;
   p.pino->robot_param(p.q, p.qd, p.qdd);
-  p.B.sensor_measure(m, d);
+  // p.B.sensor_measure(m, d);
 
 //   p.M.foot_vector(m, d);
 }

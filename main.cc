@@ -31,6 +31,7 @@
 #include <new>
 #include <string>
 #include <thread>
+#include <iomanip>
 
 // #include <dataLogging.hpp>
 #include "Body.hpp"
@@ -47,6 +48,7 @@
 #include "ModelBuilder.hpp"
 #include "CostBuilder.hpp"
 #include "DDPSolver.hpp"
+
 
 #define MUJOCO_PLUGIN_DIR "mujoco_plugin"
 
@@ -133,6 +135,8 @@ Integrate I(pino, Traj, B, C, FSM_);
 
 int world_cnt = 0;
 int loop_index = 0;
+double optimization_t = 0.0;
+
 
 void initiate()
 {
@@ -158,8 +162,8 @@ if(t < 0.0001)
         d->qpos[0] = 0;
         d->qpos[1] = 0;      
         // d->qpos[2] = 0.3536;
-        // d->qpos[3] = 1;
-        // d->qpos[4] = 0; 
+        d->qpos[3] = 1;
+        d->qpos[4] = 0; 
         d->qpos[5] = 0;
         d->qpos[6] = 0;
         d->qpos[7] = 0; //FLHAA         
@@ -176,15 +180,44 @@ if(t < 0.0001)
         d->qpos[18] = M_PI/2; //2.2+0.4*sin(t); //RRKNEE       
         
     }
+    VectorXd us(12);
+    // VectorXd xs(19);
 
   if(world_cnt%4 == 0)
   {
     t = d->time;
 
       I.sensor_measure(m, d);
-      
+
+      //! Debugging
+
+      costbuilder_->get_t(t);
       // costbuilder_->get_costfunction();
-      ddpsolver_->solve();
+      
+
+      if(t >= optimization_t)
+      {
+        // modelbuilder_->standContacts(modelbuilder_->get_q(), /*project_to_floor=*/true);
+
+        ddpsolver_->solve();
+        us = ddpsolver_->get_u(0);
+        auto xs = ddpsolver_->get_x(0);
+
+        // cout << "us\n" << us << endl;
+        
+        optimization_t += 0.02;
+      }
+
+
+      //   VectorXd q = VectorXd::Zero(19);
+      //   for(int k=0;k<19;k++) q[k] = d->qpos[k];
+      // // Match between urdf and mjcf
+      
+      //   Eigen::Quaterniond qm(d->qpos[3], d->qpos[4], d->qpos[5], d->qpos[6]); // (w,x,y,z)
+
+
+
+
       // I.get_error(t);
       
       // I.Leg_controller();
@@ -195,6 +228,24 @@ if(t < 0.0001)
       // cout << "Kinematics\n" << K_FL.get_Jacb() << endl;
       
       
+
+      d->ctrl[0] = us[0]; // FLHAA
+      d->ctrl[1] = us[1]; // + I.get_FL_J_input()[2]; // FLHIP
+      d->ctrl[2] = us[2]; // FLKNEE
+
+      d->ctrl[3] = us[3]; // FRHAA
+      d->ctrl[4] = us[4]; // + I.get_FR_J_input()[2]; // FRHIP
+      d->ctrl[5] = us[5];  // FRKNEE
+
+      d->ctrl[6] = us[6]; // RLHAA
+      d->ctrl[7] = us[7]; // + I.get_RL_J_input()[3]; // RLHIP
+      d->ctrl[8] = us[8]; // RLKNEE
+
+      d->ctrl[9] = us[9]; // RRHAA
+      d->ctrl[10] = us[10]; // + I.get_RR_J_input()[3]; // RRHIP
+      d->ctrl[11] = us[11]; // RRKNEE
+
+
 
       // d->ctrl[0] = I.get_FL_J_input()[0]; // FLHAA
       // d->ctrl[1] = I.get_FL_J_input()[1]; // + I.get_FL_J_input()[2]; // FLHIP

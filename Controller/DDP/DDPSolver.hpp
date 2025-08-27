@@ -15,6 +15,9 @@ public:
     DDPSolver(shared_ptr<ModelBuilder> ModelBuilder, shared_ptr<CostBuilder> CostBuilder);
     ~DDPSolver();
     void solve();
+    VectorXd get_x(int horizon);
+    VectorXd get_u(int horizon);
+    VectorXd get_lambda(int k) const;
 
 private:
     struct Impl;

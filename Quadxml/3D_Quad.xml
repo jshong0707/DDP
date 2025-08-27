@@ -141,10 +141,14 @@
   </actuator>
     <sensor>
         <!-- IMU (torso_front) -->
+        <framelinvel  name="trunk_vel"  objtype="site" objname="imu" />
+        <gyro          site="imu" name="imu_gyro"/>
         <accelerometer site="imu" name="imu_accl"/>
+        <framepos  name="trunk_pos"  objtype="site" objname="imu" />
+        <!-- <accelerometer site="imu" name="imu_accl"/>
         <gyro          site="imu" name="imu_gyro"/>
         <framelinvel  name="trunk_vel"  objtype="site" objname="imu" />
-        <framepos  name="trunk_pos"  objtype="site" objname="imu" />
+        <framepos  name="trunk_pos"  objtype="site" objname="imu" /> -->
         
 
         <!-- 발바닥 Force Sensor -->

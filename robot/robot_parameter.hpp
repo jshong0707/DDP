@@ -16,22 +16,23 @@ public:
   robot_parameter();
   ~robot_parameter();
 
-  void robot_param(const Eigen::VectorXd &q,
-                   const Eigen::VectorXd &qd,
-                   const Eigen::VectorXd &qdd);
+  void robot_param(const VectorXd &q,
+                   const VectorXd &qd,
+                   const VectorXd &qdd);
 
-  std::shared_ptr<pinocchio::Model> getModel() const;
-  std::shared_ptr<pinocchio::Data>  getData()  const;
+  shared_ptr<pinocchio::Model> getModel() const;
+  shared_ptr<pinocchio::Data>  getData()  const;
 
-  Eigen::Vector3d get_leg_pos(int i) const;
-  Eigen::Matrix3d get_Jacb   (int i) const;
-  Eigen::Vector3d get_rpy    ()    const;
-  Eigen::Matrix3d get_R      ()    const;
-  std::vector<std::string> get_foot_frame () const;
-
+  Vector3d get_leg_pos(int i) const;
+  Matrix3d get_Jacb   (int i) const;
+  Vector3d get_rpy    ()    const;
+  Matrix3d get_R      ()    const;
+  vector<string> get_foot_frame () const;
+  VectorXd get_q() const;
+  VectorXd get_qd() const;
   
 private:
   struct Impl;                    // Pimpl 전방 선언
-  std::unique_ptr<Impl> pimpl_;   // 실제 구현은 Impl 안에
+  unique_ptr<Impl> pimpl_;   // 실제 구현은 Impl 안에
   
 };
