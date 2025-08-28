@@ -114,9 +114,9 @@ struct robot_parameter::Impl
       rpy = { ypr[0], ypr[1], ypr[2] };
     }
     
-    pinocchio::rnea(*model_, *data_, q, Eigen::VectorXd::Zero(model_->nv), Eigen::VectorXd::Zero(model_->nv));
-    Eigen::VectorXd hg = data_->tau;  // pure gravity generalized forces
-    std::cout << "||hg|| = " << hg.norm() << "\n";  // e11이면 단위/관성 문제
+    // pinocchio::rnea(*model_, *data_, q, Eigen::VectorXd::Zero(model_->nv), Eigen::VectorXd::Zero(model_->nv));
+    // Eigen::VectorXd hg = data_->tau;  // pure gravity generalized forces
+    // std::cout << "||hg|| = " << hg.norm() << "\n";  // e11이면 단위/관성 문제
 
 
   }

@@ -97,7 +97,7 @@ void CostBuilder::get_t(double t)
     // cout << pimpl_->t << endl;
     VectorXd new_xref = pimpl_->xref0;
     pimpl_->res_x->set_reference(new_xref);
-    pimpl_->res_u->set_reference(Eigen::VectorXd::Ones(pimpl_->nu) * 10000000000000000000000000000000000);
+    pimpl_->res_u->set_reference(Eigen::VectorXd::Ones(pimpl_->nu) * 1);
     
 }
 
