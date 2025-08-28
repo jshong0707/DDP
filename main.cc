@@ -203,7 +203,7 @@ if(t < 0.0001)
         us = ddpsolver_->get_u(0);
         auto xs = ddpsolver_->get_x(0);
 
-        // cout << "us\n" << us << endl;
+        cout << "us\n" << us << endl;
         
         optimization_t += 0.02;
       }

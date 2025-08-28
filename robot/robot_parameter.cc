@@ -87,6 +87,7 @@ struct robot_parameter::Impl
       auto T_imu2foot = oMf_imu.inverse() * oMf_foot;
 
       leg_pos[i] = T_HAA2foot.translation();
+      
       foot_vector[i] = T_imu2foot.translation();
 
       // cout << i << ": " << leg_pos[i][0] << ": " << leg_pos[i][1] << ": " << leg_pos[i][2] << endl;
@@ -113,7 +114,14 @@ struct robot_parameter::Impl
       rpy = { ypr[0], ypr[1], ypr[2] };
     }
     
+    pinocchio::rnea(*model_, *data_, q, Eigen::VectorXd::Zero(model_->nv), Eigen::VectorXd::Zero(model_->nv));
+    Eigen::VectorXd hg = data_->tau;  // pure gravity generalized forces
+    std::cout << "||hg|| = " << hg.norm() << "\n";  // e11이면 단위/관성 문제
+
+
   }
+
+  
 
   Eigen::Vector3d get_leg_pos(int i) const { return leg_pos[i]; }
   Eigen::Matrix3d get_Jacb   (int i) const { return J_B[i];   }
@@ -154,7 +162,8 @@ std::shared_ptr<pinocchio::Model> robot_parameter::getModel() const {return pimp
 
 std::shared_ptr<pinocchio::Data> robot_parameter::getData() const {return pimpl_->data_; }
 
-VectorXd robot_parameter::get_q() const {return pimpl_->q; }
+VectorXd robot_parameter::get_q() const {
+  return pimpl_->q; }
 
 VectorXd robot_parameter::get_qd() const {return pimpl_->qd;}
  
